@@ -1,52 +1,74 @@
-# AIversity: The Adaptive Learning Ecosystem
+# AIversity and ARCANE: Advanced Adaptive Learning Ecosystem
 
-## Project Description
-AIversity is an innovative multi-agent AI tutoring system that aims to revolutionize the way students learn and acquire knowledge. The system adapts to the individual learner's journey, providing a personalized and engaging educational experience. By leveraging advanced AI techniques and a collaborative multi-agent architecture, AIversity creates a dynamic and interactive learning environment that evolves with the student's progress.
+## Project Overview
+This project encompasses two major components:
 
-Key features of AIversity include:
-- Personalized assessment of learning objectives and current knowledge level.
-- Dynamic generation of tailored syllabi and curricula
-- Adaptive adjustment of content difficulty and depth based on learner's performance
-- Continuous refinement of teaching methods and materials
-- Emulation of a personal university experience with comprehensive educational support
-- Multi-modal content delivery optimized for engagement and knowledge retention
+1. **ARCANE (Advanced Reasoning Cognitive Architecture for Networked Entities)**: A sophisticated cognitive architecture framework designed to support advanced AI systems.
 
-## Architecture
-AIversity employs a multi-agent architecture, where specialized agents work together to deliver a seamless and effective learning experience. The system consists of the following key components:
+2. **AIversity**: An innovative multi-agent AI tutoring system built on the ARCANE framework.
+
+Both ARCANE and AIversity are being developed as part of an MSc program, with the goal of revolutionizing personalized education through cutting-edge AI techniques.
+
+## ARCANE Framework
+ARCANE is a comprehensive cognitive architecture that provides a robust foundation for creating intelligent, networked entities. Key features of ARCANE include:
+
+- Multi-agent system support
+- Advanced reasoning capabilities
+- Flexible communication protocols
+- Integration of large language models
+- HERNS (Hierarchical Episodic Retrieval and Narrative Storage) memory system
+
+ARCANE is designed to be a versatile framework that can be applied to various AI applications beyond educational systems.
+
+## AIversity: Adaptive Learning Ecosystem
+Built on the ARCANE framework, AIversity aims to create a dynamic and interactive learning environment that evolves with each student's journey. 
+
+### Key Features
+- Personalized assessment and adaptive content delivery
+- Dynamic syllabus and curriculum generation
+- Multi-modal learning experiences
+- Collaborative multi-agent architecture for diverse expertise
+- Advanced memory management through HERNS
+- Continuous refinement of teaching methods
+
+## Architecture Components
+Both ARCANE and AIversity share key architectural components:
 
 ### Triage Agent
-The Triage Agent serves as the main interface between the student and the AI tutoring system. It handles user requests, monitors the entire system, and coordinates the activities of other agents. The Triage Agent is responsible for maintaining a consistent and personalized interaction with the student.
+Serves as the main interface, handling requests and coordinating activities.
 
 ### Planning Agent
-The Planning Agent oversees the negotiation and planning process among agents for complex tasks. It ensures consistency, facilitates proper information exchange, and monitors the progress and status of assigned tasks. The Planning Agent plays a crucial role in coordinating the collaborative efforts of multiple agents.
+Oversees task planning and agent collaboration.
 
 ### Vision Agent
-The Vision Agent is dedicated to processing and analyzing visual documents such as images, PDFs, and scanned materials. It employs OCR techniques to extract text from images and performs further analysis to answer specific questions or provide relevant insights related to the visual content.
+Processes and analyzes visual content.
 
 ### Specialized Agents
-AIversity incorporates a wide range of specialized agents, each with specific roles and capabilities, through the ability to spin up generalized agent descriptions. These agents are dynamically spawned based on the requirements of a particular task or project. Examples of specialized agents include:
-- Subject Matter Experts
-- Question Generators
-- Content Creators
-- Evaluators and Assessors
-- Feedback Providers
+Dynamically spawned agents with specific roles (e.g., Subject Matter Experts, Content Creators).
+
+### HERNS (Hierarchical Episodic Retrieval and Narrative Storage)
+Advanced memory system enabling efficient storage, retrieval, and narrative construction.
 
 ## Inter-Agent Communication and Collaboration
-Effective communication and collaboration among agents are vital to the success of AIversity. The system employs a messaging service that allows agents to communicate asynchronously, preventing blocking when agents are busy with other tasks. Agents have access to shared workspaces and can dynamically spawn new workspaces as needed for specific projects or subjects.
+The system employs sophisticated techniques for agent interaction, including:
+- Asynchronous messaging
+- Shared and dynamic workspaces
+- State-of-Mind context adaptation
+- Collision resolution for busy agents
+- Progress monitoring
+- HERNS-powered memory management
 
-To ensure seamless coordination and synchronization, AIversity implements the following techniques:
-- State-of-Mind: Agents dynamically alter their system prompt context based on the specific interaction or task at hand. This allows for focused and relevant conversations while maintaining a summary of all states of mind.
-- Collision Resolution: When an agent is busy and receives a message, a weaker but faster LLM is used to handle the request and determine its urgency. This ensures that the system remains responsive and can prioritize critical tasks.
-- Progress Monitoring: The Planning Agent monitors the progress and status of assigned tasks, providing transparency and enabling effective coordination among agents.
+## Project Status
+Both ARCANE and AIversity are currently under active development as part of an MSc program. This is an individual project, showcasing the integration of advanced AI concepts into a practical, educational application.
 
 ## Contributing
-As an individual project for an MSc program, AIversity is currently a solo endeavor. However, contributions and collaborations may be considered in the future as the project evolves.
+As this is an individual academic project, external contributions are not being accepted at this time. However, feedback and discussions are welcome.
 
 ## License
-AIversity is released under the MIT License.
+This project is released under the MIT License.
 
 ## Contact Information
-For any inquiries or further information about AIversity, please contact:
+For inquiries or further information about ARCANE and AIversity, please contact:
 - Name: Robert Maye
 - Email: robert@aurelio.ai
 - GitHub: https://github.com/RobMaye
