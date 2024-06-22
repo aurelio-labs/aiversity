@@ -1,6 +1,7 @@
 import sys
 import os
 import asyncio
+import json
 import aiohttp
 from aiohttp import ClientSession
 import qasync
@@ -267,6 +268,7 @@ class SharedWorkspace(QWidget):
         # Ensure the view scrolls to show the latest text
         self.chat_history.ensureCursorVisible()
 
+
     def triage_agent_response(self, response_message):
         # Stop the animation timer
         self.processing_animation_timer.stop()
@@ -282,9 +284,24 @@ class SharedWorkspace(QWidget):
         else:
             cursor.movePosition(cursor.End)
 
-        # Insert the agent's response
-        timestamp = QDateTime.currentDateTime().toString("yyyy-MM-dd HH:mm:ss")
-        self.chat_history.append(f"<span style='color: #2ECC40;'>[{timestamp}] Triage Agent:</span> {response_message}")
+        try:
+            # Parse the JSON response
+            response_data = json.loads(response_message)
+            sender = response_data.get("sender", "Triage Agent")
+            content = response_data.get("content", "")
+            timestamp = response_data.get("time_utc", "")
+
+            # Convert UTC time to local time
+            utc_time = QDateTime.fromString(timestamp, Qt.ISODate)
+            local_time = utc_time.toLocalTime()
+            formatted_time = local_time.toString("yyyy-MM-dd HH:mm:ss")
+
+            # Insert the agent's response
+            self.chat_history.append(f"<span style='color: #2ECC40;'>[{formatted_time}] {sender}:</span> {content}")
+        except json.JSONDecodeError:
+            # If JSON parsing fails, display the raw message
+            timestamp = QDateTime.currentDateTime().toString("yyyy-MM-dd HH:mm:ss")
+            self.chat_history.append(f"<span style='color: #2ECC40;'>[{timestamp}] Triage Agent:</span> {response_message}")
 
         # Ensure the view scrolls to show the latest text
         self.chat_history.ensureCursorVisible()

@@ -1,20 +1,16 @@
 import asyncio
 import re
 from typing import Optional
-
 from ARCANE.actions.action import Action
-from ARCANE.actions.get_web_content import GetWebContent
-from ARCANE.actions.search_web import SearchWeb
-from ARCANE.actions.send_message_to_user import SendMessageToUser
-from ARCANE.actions.set_next_alarm import SetNextAlarm
-from ARCANE.actions.speak_text import SpeakText
-from ARCANE.actions.update_whiteboard import UpdateWhiteboard
+from ARCANE.actions.generic_agent_actions import (
+    SetNextAlarm, UpdateWhiteboard
+)
 from channels.communication_channel import CommunicationChannel
 from llm.LLM import LLMMessage, LLM
 from util import parse_json
 
-from ARCANE.actions.tutoring_actions import ViewFileContents, EditFileContents, CreateNewFile, RunPythonFile
-
+from ARCANE.actions.file_manipulation import ViewFileContents, EditFileContents, CreateNewFile, RunPythonFile, QueryFileSystem
+from ARCANE.actions.triage_agent_actions import SendMessageToStratos, SendMessageToStudent
 
 
 class ActionEnabledLLM:
@@ -89,7 +85,7 @@ class ActionEnabledLLM:
             else:
                 print("Unknown action: " + str(action_data))
                 if communication_channel:
-                    actions.append(SendMessageToUser(
+                    actions.append(SendMessageToStudent(
                         communication_channel,
                         f"OK this is embarrassing. "
                         f"My brain asked me to do something that I don't know how to do: {action_data}"
@@ -99,16 +95,12 @@ class ActionEnabledLLM:
 
     def parse_action(self, communication_channel: CommunicationChannel, action_data: dict):
         action_name = action_data.get("action")
-        if action_name == "get_web_content":
-            return GetWebContent(action_data["url"])
-        elif action_name == "send_message_to_user":
-            return SendMessageToUser(communication_channel, action_data["message"])
-        elif action_name == "update_whiteboard":
+        if action_name == "update_whiteboard":
             return UpdateWhiteboard(self.action_layer, action_data["contents"])
         elif action_name == "wake_again_soon":
             return SetNextAlarm(self.action_layer, action_data["seconds"])
-        elif action_name == "speak_text":
-            return SpeakText(self.action_layer, action_data["text"])
+        # elif action_name == "speak_text":
+        #     return SpeakText(self.action_layer, action_data["text"])
         elif action_name == "view_file_contents":
             return ViewFileContents(action_data["file_path"])
         elif action_name == "edit_file_contents":
@@ -117,20 +109,12 @@ class ActionEnabledLLM:
             return CreateNewFile(action_data["file_path"])
         elif action_name == "run_python_file":
             return RunPythonFile(action_data["file_path"])
-        elif action_name == "notify_cora":
-            return NotifyCora()
-        elif action_name == "notify_liam":
-            return NotifyLiam()
-        elif action_name == "notify_parker":
-            return NotifyParker()
-        elif action_name == "update_policy_draft":
-            return UpdatePolicyDraft(action_data["contents"])
-        elif action_name == "update_explanatory_notes":
-            return UpdateExplanatoryNotes(action_data["contents"])
-        elif action_name == "update_secondary_legislation":
-            return UpdateSecondaryLegislation(action_data["contents"])
-        elif action_name == "update_bill":
-            return UpdateBill(action_data["contents"])
+        elif action_name == "send_message_to_student":
+            return SendMessageToStudent(communication_channel=communication_channel, message=action_data["message"])
+        elif action_name == "send_message_to_stratos":
+            return SendMessageToStratos(communication_channel=communication_channel, message=action_data["message"])
+        elif action_name == "query_file_system":
+            return QueryFileSystem(action_data["command"])
         else:
             print(f"Warning: Unknown action: {action_name}")
             return None
