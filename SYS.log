@@ -1,0 +1,229 @@
+2024-06-18 17:07:23,186 - SYS - INFO - {'event': 'server_start', 'name': 'Iris', 'port': 5000}
+2024-06-18 17:07:23,187 - SYS - INFO - {'event': 'server_start', 'name': 'STRATOS', 'port': 5001}
+2024-06-18 17:07:47,802 - SYS - INFO - Shutdown signal received.
+2024-06-18 17:07:47,804 - SYS - INFO - {'event': 'server_terminate', 'name': 'STRATOS'}
+2024-06-18 17:07:47,804 - SYS - INFO - {'event': 'server_terminate', 'name': 'STRATOS'}
+2024-06-18 17:07:48,063 - SYS - INFO - {'event': 'server_join', 'name': 'STRATOS'}
+2024-06-18 17:07:48,064 - SYS - INFO - {'event': 'server_join', 'name': 'STRATOS'}
+2024-06-18 17:07:49,581 - SYS - INFO - {'event': 'server_start', 'name': 'Iris', 'port': 5000}
+2024-06-18 17:07:49,583 - SYS - INFO - {'event': 'server_start', 'name': 'STRATOS', 'port': 5001}
+2024-06-18 17:07:54,667 - SYS - INFO - Shutdown signal received.
+2024-06-18 17:07:54,668 - SYS - INFO - {'event': 'server_terminate', 'name': 'STRATOS'}
+2024-06-18 17:07:54,669 - SYS - INFO - {'event': 'server_terminate', 'name': 'STRATOS'}
+2024-06-18 17:07:54,898 - SYS - INFO - {'event': 'server_join', 'name': 'STRATOS'}
+2024-06-18 17:07:54,898 - SYS - INFO - {'event': 'server_join', 'name': 'STRATOS'}
+2024-06-18 17:08:48,309 - SYS - INFO - {'event': 'server_start', 'name': 'Iris', 'port': 5000}
+2024-06-18 17:08:48,311 - SYS - INFO - {'event': 'server_start', 'name': 'STRATOS', 'port': 5001}
+2024-06-18 17:08:52,796 - SYS - INFO - Shutdown signal received.
+2024-06-18 17:08:52,797 - SYS - INFO - {'event': 'server_terminate', 'name': 'STRATOS'}
+2024-06-18 17:08:52,797 - SYS - INFO - {'event': 'server_terminate', 'name': 'STRATOS'}
+2024-06-18 17:11:44,689 - SYS - INFO - {'event': 'server_start', 'name': 'Iris', 'port': 5000}
+2024-06-18 17:11:44,691 - SYS - INFO - {'event': 'server_start', 'name': 'STRATOS', 'port': 5001}
+2024-06-18 17:11:48,199 - SYS - INFO - Shutdown signal received.
+2024-06-18 17:11:48,199 - SYS - INFO - {'event': 'server_terminate', 'name': 'Iris'}
+2024-06-18 17:11:48,200 - SYS - INFO - {'event': 'server_terminate', 'name': 'STRATOS'}
+2024-06-18 18:28:55,209 - SYS - INFO - {'event': 'server_start', 'name': 'Iris', 'port': 5000}
+2024-06-18 18:28:55,211 - SYS - INFO - {'event': 'server_start', 'name': 'STRATOS', 'port': 5001}
+2024-06-18 18:32:34,093 - SYS - INFO - Shutdown signal received.
+2024-06-18 18:32:34,096 - SYS - INFO - {'event': 'server_terminate', 'name': 'Iris'}
+2024-06-18 18:32:34,097 - SYS - INFO - {'event': 'server_terminate', 'name': 'STRATOS'}
+2024-06-18 18:32:36,639 - SYS - INFO - {'event': 'server_start', 'name': 'Iris', 'port': 5000}
+2024-06-18 18:32:36,641 - SYS - INFO - {'event': 'server_start', 'name': 'STRATOS', 'port': 5001}
+2024-06-18 18:34:07,055 - SYS - INFO - Shutdown signal received.
+2024-06-18 18:34:07,058 - SYS - INFO - {'event': 'server_terminate', 'name': 'Iris'}
+2024-06-18 18:34:07,059 - SYS - INFO - {'event': 'server_terminate', 'name': 'STRATOS'}
+2024-06-18 18:34:07,217 - SYS - INFO - Shutdown signal received.
+2024-06-18 18:34:07,218 - SYS - INFO - {'event': 'server_terminate', 'name': 'Iris'}
+2024-06-18 18:34:07,218 - SYS - INFO - {'event': 'server_terminate', 'name': 'STRATOS'}
+2024-06-18 18:34:08,842 - SYS - INFO - {'event': 'server_start', 'name': 'Iris', 'port': 5000}
+2024-06-18 18:34:08,845 - SYS - INFO - {'event': 'server_start', 'name': 'STRATOS', 'port': 5001}
+2024-06-18 18:34:18,646 - SYS - INFO - Shutdown signal received.
+2024-06-18 18:34:18,647 - SYS - INFO - {'event': 'server_terminate', 'name': 'Iris'}
+2024-06-18 18:34:18,647 - SYS - INFO - {'event': 'server_terminate', 'name': 'STRATOS'}
+2024-06-18 18:34:19,984 - SYS - INFO - {'event': 'server_start', 'name': 'Iris', 'port': 5000}
+2024-06-18 18:34:19,985 - SYS - INFO - {'event': 'server_start', 'name': 'STRATOS', 'port': 5001}
+2024-06-18 18:37:31,129 - SYS - INFO - Shutdown signal received.
+2024-06-18 18:37:31,132 - SYS - INFO - {'event': 'server_terminate', 'name': 'Iris'}
+2024-06-18 18:37:31,133 - SYS - INFO - {'event': 'server_terminate', 'name': 'STRATOS'}
+2024-06-18 18:37:31,307 - SYS - INFO - Shutdown signal received.
+2024-06-18 18:37:31,307 - SYS - INFO - {'event': 'server_terminate', 'name': 'Iris'}
+2024-06-18 18:37:31,308 - SYS - INFO - {'event': 'server_terminate', 'name': 'STRATOS'}
+2024-06-18 18:37:33,373 - SYS - INFO - {'event': 'server_start', 'name': 'Iris', 'port': 5000}
+2024-06-18 18:37:33,374 - SYS - INFO - {'event': 'server_start', 'name': 'STRATOS', 'port': 5001}
+2024-06-19 06:43:07,927 - SYS - INFO - Shutdown signal received.
+2024-06-19 06:43:07,929 - SYS - INFO - {'event': 'server_terminate', 'name': 'Iris'}
+2024-06-19 06:43:07,929 - SYS - INFO - {'event': 'server_terminate', 'name': 'STRATOS'}
+2024-06-19 08:32:50,676 - SYS - INFO - {'event': 'server_start', 'name': 'Iris', 'port': 5000}
+2024-06-19 08:32:50,678 - SYS - INFO - {'event': 'server_start', 'name': 'STRATOS', 'port': 5001}
+2024-06-19 08:34:03,680 - SYS - INFO - {'event': 'server_start', 'name': 'Iris', 'port': 5000}
+2024-06-19 08:34:03,681 - SYS - INFO - {'event': 'server_start', 'name': 'STRATOS', 'port': 5001}
+2024-06-19 08:34:13,133 - SYS - INFO - {'event': 'server_start', 'name': 'Iris', 'port': 5000}
+2024-06-19 08:34:13,135 - SYS - INFO - {'event': 'server_start', 'name': 'STRATOS', 'port': 5001}
+2024-06-19 08:39:15,277 - SYS - INFO - Shutdown signal received.
+2024-06-19 08:39:15,280 - SYS - INFO - {'event': 'server_terminate', 'name': 'Iris'}
+2024-06-19 08:39:15,281 - SYS - INFO - {'event': 'server_terminate', 'name': 'STRATOS'}
+2024-06-19 08:39:17,122 - SYS - INFO - {'event': 'server_start', 'name': 'Iris', 'port': 5000}
+2024-06-19 08:39:17,124 - SYS - INFO - {'event': 'server_start', 'name': 'STRATOS', 'port': 5001}
+2024-06-19 08:47:25,153 - SYS - INFO - Shutdown signal received.
+2024-06-19 08:47:25,156 - SYS - INFO - {'event': 'server_terminate', 'name': 'Iris'}
+2024-06-19 08:47:25,156 - SYS - INFO - {'event': 'server_terminate', 'name': 'STRATOS'}
+2024-06-19 08:47:26,996 - SYS - INFO - {'event': 'server_start', 'name': 'Iris', 'port': 5000}
+2024-06-19 08:47:26,998 - SYS - INFO - {'event': 'server_start', 'name': 'STRATOS', 'port': 5001}
+2024-06-19 08:47:43,254 - SYS - INFO - Shutdown signal received.
+2024-06-19 08:47:43,255 - SYS - INFO - {'event': 'server_terminate', 'name': 'Iris'}
+2024-06-19 08:47:43,256 - SYS - INFO - {'event': 'server_terminate', 'name': 'STRATOS'}
+2024-06-19 08:47:45,216 - SYS - INFO - {'event': 'server_start', 'name': 'Iris', 'port': 5000}
+2024-06-19 08:47:45,218 - SYS - INFO - {'event': 'server_start', 'name': 'STRATOS', 'port': 5001}
+2024-06-19 08:48:01,071 - SYS - INFO - Shutdown signal received.
+2024-06-19 08:48:01,072 - SYS - INFO - {'event': 'server_terminate', 'name': 'Iris'}
+2024-06-19 08:48:01,072 - SYS - INFO - {'event': 'server_terminate', 'name': 'STRATOS'}
+2024-06-19 08:48:01,219 - SYS - INFO - Shutdown signal received.
+2024-06-19 08:48:01,220 - SYS - INFO - {'event': 'server_terminate', 'name': 'Iris'}
+2024-06-19 08:48:01,220 - SYS - INFO - {'event': 'server_terminate', 'name': 'STRATOS'}
+2024-06-19 08:48:02,341 - SYS - INFO - {'event': 'server_start', 'name': 'Iris', 'port': 5000}
+2024-06-19 08:48:02,343 - SYS - INFO - {'event': 'server_start', 'name': 'STRATOS', 'port': 5001}
+2024-06-19 08:50:45,717 - SYS - INFO - Shutdown signal received.
+2024-06-19 08:50:45,718 - SYS - INFO - {'event': 'server_terminate', 'name': 'Iris'}
+2024-06-19 08:50:45,718 - SYS - INFO - {'event': 'server_terminate', 'name': 'STRATOS'}
+2024-06-19 08:50:46,934 - SYS - INFO - {'event': 'server_start', 'name': 'Iris', 'port': 5000}
+2024-06-19 08:50:46,936 - SYS - INFO - {'event': 'server_start', 'name': 'STRATOS', 'port': 5001}
+2024-06-19 08:52:25,067 - SYS - INFO - Shutdown signal received.
+2024-06-19 08:52:25,069 - SYS - INFO - {'event': 'server_terminate', 'name': 'Iris'}
+2024-06-19 08:52:25,070 - SYS - INFO - {'event': 'server_terminate', 'name': 'STRATOS'}
+2024-06-19 08:52:25,258 - SYS - INFO - Shutdown signal received.
+2024-06-19 08:52:25,258 - SYS - INFO - {'event': 'server_terminate', 'name': 'Iris'}
+2024-06-19 08:52:25,258 - SYS - INFO - {'event': 'server_terminate', 'name': 'STRATOS'}
+2024-06-19 08:52:26,602 - SYS - INFO - {'event': 'server_start', 'name': 'Iris', 'port': 5000}
+2024-06-19 08:52:26,604 - SYS - INFO - {'event': 'server_start', 'name': 'STRATOS', 'port': 5001}
+2024-06-19 08:54:00,723 - SYS - INFO - Shutdown signal received.
+2024-06-19 08:54:00,724 - SYS - INFO - {'event': 'server_terminate', 'name': 'Iris'}
+2024-06-19 08:54:00,725 - SYS - INFO - {'event': 'server_terminate', 'name': 'STRATOS'}
+2024-06-19 08:54:02,281 - SYS - INFO - {'event': 'server_start', 'name': 'Iris', 'port': 5000}
+2024-06-19 08:54:02,283 - SYS - INFO - {'event': 'server_start', 'name': 'STRATOS', 'port': 5001}
+2024-06-19 08:56:28,186 - SYS - INFO - Shutdown signal received.
+2024-06-19 08:56:28,186 - SYS - INFO - {'event': 'server_terminate', 'name': 'Iris'}
+2024-06-19 08:56:28,186 - SYS - INFO - {'event': 'server_terminate', 'name': 'STRATOS'}
+2024-06-19 08:56:30,203 - SYS - INFO - {'event': 'server_start', 'name': 'Iris', 'port': 5000}
+2024-06-19 08:56:30,205 - SYS - INFO - {'event': 'server_start', 'name': 'STRATOS', 'port': 5001}
+2024-06-19 08:57:29,794 - SYS - INFO - Shutdown signal received.
+2024-06-19 08:57:29,796 - SYS - INFO - {'event': 'server_terminate', 'name': 'Iris'}
+2024-06-19 08:57:29,796 - SYS - INFO - {'event': 'server_terminate', 'name': 'STRATOS'}
+2024-06-19 08:57:31,814 - SYS - INFO - {'event': 'server_start', 'name': 'Iris', 'port': 5000}
+2024-06-19 08:57:31,816 - SYS - INFO - {'event': 'server_start', 'name': 'STRATOS', 'port': 5001}
+2024-06-19 08:58:26,112 - SYS - INFO - Shutdown signal received.
+2024-06-19 08:58:26,113 - SYS - INFO - {'event': 'server_terminate', 'name': 'Iris'}
+2024-06-19 08:58:26,114 - SYS - INFO - {'event': 'server_terminate', 'name': 'STRATOS'}
+2024-06-19 08:58:26,332 - SYS - INFO - Shutdown signal received.
+2024-06-19 08:58:26,332 - SYS - INFO - {'event': 'server_terminate', 'name': 'Iris'}
+2024-06-19 08:58:26,332 - SYS - INFO - {'event': 'server_terminate', 'name': 'STRATOS'}
+2024-06-19 08:58:28,704 - SYS - INFO - {'event': 'server_start', 'name': 'Iris', 'port': 5000}
+2024-06-19 08:58:28,706 - SYS - INFO - {'event': 'server_start', 'name': 'STRATOS', 'port': 5001}
+2024-06-19 08:59:03,871 - SYS - INFO - Shutdown signal received.
+2024-06-19 08:59:03,871 - SYS - INFO - {'event': 'server_terminate', 'name': 'Iris'}
+2024-06-19 08:59:03,871 - SYS - INFO - {'event': 'server_terminate', 'name': 'STRATOS'}
+2024-06-19 08:59:04,066 - SYS - INFO - Shutdown signal received.
+2024-06-19 08:59:04,066 - SYS - INFO - {'event': 'server_terminate', 'name': 'Iris'}
+2024-06-19 08:59:04,066 - SYS - INFO - {'event': 'server_terminate', 'name': 'STRATOS'}
+2024-06-19 08:59:06,168 - SYS - INFO - {'event': 'server_start', 'name': 'Iris', 'port': 5000}
+2024-06-19 08:59:06,170 - SYS - INFO - {'event': 'server_start', 'name': 'STRATOS', 'port': 5001}
+2024-06-19 08:59:32,793 - SYS - INFO - Shutdown signal received.
+2024-06-19 08:59:32,794 - SYS - INFO - {'event': 'server_terminate', 'name': 'Iris'}
+2024-06-19 08:59:32,794 - SYS - INFO - {'event': 'server_terminate', 'name': 'STRATOS'}
+2024-06-19 08:59:34,733 - SYS - INFO - {'event': 'server_start', 'name': 'Iris', 'port': 5000}
+2024-06-19 08:59:34,735 - SYS - INFO - {'event': 'server_start', 'name': 'STRATOS', 'port': 5001}
+2024-06-19 08:59:52,117 - SYS - INFO - Shutdown signal received.
+2024-06-19 08:59:52,118 - SYS - INFO - {'event': 'server_terminate', 'name': 'Iris'}
+2024-06-19 08:59:52,118 - SYS - INFO - {'event': 'server_terminate', 'name': 'STRATOS'}
+2024-06-19 08:59:52,294 - SYS - INFO - Shutdown signal received.
+2024-06-19 08:59:52,294 - SYS - INFO - {'event': 'server_terminate', 'name': 'Iris'}
+2024-06-19 08:59:52,294 - SYS - INFO - {'event': 'server_terminate', 'name': 'STRATOS'}
+2024-06-19 08:59:54,150 - SYS - INFO - {'event': 'server_start', 'name': 'Iris', 'port': 5000}
+2024-06-19 08:59:54,152 - SYS - INFO - {'event': 'server_start', 'name': 'STRATOS', 'port': 5001}
+2024-06-19 09:00:11,701 - SYS - INFO - Shutdown signal received.
+2024-06-19 09:00:11,701 - SYS - INFO - {'event': 'server_terminate', 'name': 'Iris'}
+2024-06-19 09:00:11,702 - SYS - INFO - {'event': 'server_terminate', 'name': 'STRATOS'}
+2024-06-19 09:00:11,867 - SYS - INFO - Shutdown signal received.
+2024-06-19 09:00:11,867 - SYS - INFO - {'event': 'server_terminate', 'name': 'Iris'}
+2024-06-19 09:00:11,868 - SYS - INFO - {'event': 'server_terminate', 'name': 'STRATOS'}
+2024-06-19 09:00:13,353 - SYS - INFO - {'event': 'server_start', 'name': 'Iris', 'port': 5000}
+2024-06-19 09:00:13,355 - SYS - INFO - {'event': 'server_start', 'name': 'STRATOS', 'port': 5001}
+2024-06-19 09:00:34,437 - SYS - INFO - Shutdown signal received.
+2024-06-19 09:00:34,438 - SYS - INFO - {'event': 'server_terminate', 'name': 'Iris'}
+2024-06-19 09:00:34,439 - SYS - INFO - {'event': 'server_terminate', 'name': 'STRATOS'}
+2024-06-19 09:00:34,576 - SYS - INFO - Shutdown signal received.
+2024-06-19 09:00:34,576 - SYS - INFO - {'event': 'server_terminate', 'name': 'Iris'}
+2024-06-19 09:00:34,577 - SYS - INFO - {'event': 'server_terminate', 'name': 'STRATOS'}
+2024-06-22 08:46:13,132 - SYS - INFO - {'event': 'server_start', 'name': 'Iris', 'port': 5000}
+2024-06-22 08:46:13,134 - SYS - INFO - {'event': 'server_start', 'name': 'STRATOS', 'port': 5001}
+2024-06-22 08:49:15,223 - SYS - INFO - Shutdown signal received.
+2024-06-22 08:49:15,225 - SYS - INFO - {'event': 'server_terminate', 'name': 'Iris'}
+2024-06-22 08:49:15,225 - SYS - INFO - {'event': 'server_terminate', 'name': 'STRATOS'}
+2024-06-22 08:49:16,233 - SYS - INFO - Shutdown signal received.
+2024-06-22 08:49:16,234 - SYS - INFO - {'event': 'server_terminate', 'name': 'Iris'}
+2024-06-22 08:49:16,234 - SYS - INFO - {'event': 'server_terminate', 'name': 'STRATOS'}
+2024-06-22 08:53:29,201 - SYS - INFO - {'event': 'server_start', 'name': 'Iris', 'port': 5000}
+2024-06-22 08:53:29,205 - SYS - INFO - {'event': 'server_start', 'name': 'STRATOS', 'port': 5001}
+2024-06-22 08:53:29,650 - SYS - INFO - Shutdown signal received.
+2024-06-22 08:53:29,651 - SYS - INFO - {'event': 'server_terminate', 'name': 'Iris'}
+2024-06-22 08:53:29,651 - SYS - INFO - {'event': 'server_terminate', 'name': 'STRATOS'}
+2024-06-22 10:06:26,584 - SYS - INFO - {'event': 'server_start', 'name': 'Iris', 'port': 5000}
+2024-06-22 10:06:26,587 - SYS - INFO - {'event': 'server_start', 'name': 'STRATOS', 'port': 5001}
+2024-06-22 10:08:44,323 - SYS - INFO - Shutdown signal received.
+2024-06-22 10:08:44,326 - SYS - INFO - {'event': 'server_terminate', 'name': 'Iris'}
+2024-06-22 10:08:44,326 - SYS - INFO - {'event': 'server_terminate', 'name': 'STRATOS'}
+2024-06-22 10:10:06,048 - SYS - INFO - {'event': 'server_start', 'name': 'Iris', 'port': 5000}
+2024-06-22 10:10:06,050 - SYS - INFO - {'event': 'server_start', 'name': 'STRATOS', 'port': 5001}
+2024-06-22 10:10:19,220 - SYS - INFO - Shutdown signal received.
+2024-06-22 10:10:19,222 - SYS - INFO - {'event': 'server_terminate', 'name': 'Iris'}
+2024-06-22 10:10:19,222 - SYS - INFO - {'event': 'server_terminate', 'name': 'STRATOS'}
+2024-06-22 10:10:21,873 - SYS - INFO - {'event': 'server_start', 'name': 'Iris', 'port': 5000}
+2024-06-22 10:10:21,876 - SYS - INFO - {'event': 'server_start', 'name': 'STRATOS', 'port': 5001}
+2024-06-22 10:12:00,551 - SYS - INFO - Shutdown signal received.
+2024-06-22 10:12:00,552 - SYS - INFO - {'event': 'server_terminate', 'name': 'Iris'}
+2024-06-22 10:12:00,552 - SYS - INFO - {'event': 'server_terminate', 'name': 'STRATOS'}
+2024-06-22 10:12:34,658 - SYS - INFO - {'event': 'server_start', 'name': 'Iris', 'port': 5000}
+2024-06-22 10:12:34,660 - SYS - INFO - {'event': 'server_start', 'name': 'STRATOS', 'port': 5001}
+2024-06-22 10:44:59,423 - SYS - INFO - Shutdown signal received.
+2024-06-22 10:44:59,429 - SYS - INFO - {'event': 'server_terminate', 'name': 'Iris'}
+2024-06-22 10:44:59,429 - SYS - INFO - {'event': 'server_terminate', 'name': 'STRATOS'}
+2024-06-22 11:08:26,928 - SYS - INFO - {'event': 'server_start', 'name': 'Iris', 'port': 5000}
+2024-06-22 11:08:26,931 - SYS - INFO - {'event': 'server_start', 'name': 'STRATOS', 'port': 5001}
+2024-06-22 11:08:52,860 - SYS - INFO - Shutdown signal received.
+2024-06-22 11:08:52,862 - SYS - INFO - {'event': 'server_terminate', 'name': 'Iris'}
+2024-06-22 11:08:52,862 - SYS - INFO - {'event': 'server_terminate', 'name': 'STRATOS'}
+2024-06-22 11:08:54,449 - SYS - INFO - {'event': 'server_start', 'name': 'Iris', 'port': 5000}
+2024-06-22 11:08:54,450 - SYS - INFO - {'event': 'server_start', 'name': 'STRATOS', 'port': 5001}
+2024-06-22 11:10:04,543 - SYS - INFO - Shutdown signal received.
+2024-06-22 11:10:04,545 - SYS - INFO - {'event': 'server_terminate', 'name': 'Iris'}
+2024-06-22 11:10:04,545 - SYS - INFO - {'event': 'server_terminate', 'name': 'STRATOS'}
+2024-06-22 11:10:06,121 - SYS - INFO - {'event': 'server_start', 'name': 'Iris', 'port': 5000}
+2024-06-22 11:10:06,123 - SYS - INFO - {'event': 'server_start', 'name': 'STRATOS', 'port': 5001}
+2024-06-22 11:10:32,846 - SYS - INFO - Shutdown signal received.
+2024-06-22 11:10:32,847 - SYS - INFO - {'event': 'server_terminate', 'name': 'Iris'}
+2024-06-22 11:10:32,848 - SYS - INFO - {'event': 'server_terminate', 'name': 'STRATOS'}
+2024-06-22 11:10:32,993 - SYS - INFO - Shutdown signal received.
+2024-06-22 11:10:32,993 - SYS - INFO - {'event': 'server_terminate', 'name': 'Iris'}
+2024-06-22 11:10:32,993 - SYS - INFO - {'event': 'server_terminate', 'name': 'STRATOS'}
+2024-06-22 11:10:34,999 - SYS - INFO - {'event': 'server_start', 'name': 'Iris', 'port': 5000}
+2024-06-22 11:10:35,001 - SYS - INFO - {'event': 'server_start', 'name': 'STRATOS', 'port': 5001}
+2024-06-22 11:13:23,345 - SYS - INFO - Shutdown signal received.
+2024-06-22 11:13:23,346 - SYS - INFO - {'event': 'server_terminate', 'name': 'Iris'}
+2024-06-22 11:13:23,346 - SYS - INFO - {'event': 'server_terminate', 'name': 'STRATOS'}
+2024-06-22 11:13:25,358 - SYS - INFO - {'event': 'server_start', 'name': 'Iris', 'port': 5000}
+2024-06-22 11:13:25,361 - SYS - INFO - {'event': 'server_start', 'name': 'STRATOS', 'port': 5001}
+2024-06-22 11:14:37,671 - SYS - INFO - Shutdown signal received.
+2024-06-22 11:14:37,674 - SYS - INFO - {'event': 'server_terminate', 'name': 'Iris'}
+2024-06-22 11:14:37,674 - SYS - INFO - {'event': 'server_terminate', 'name': 'STRATOS'}
+2024-06-22 11:14:37,826 - SYS - INFO - Shutdown signal received.
+2024-06-22 11:14:37,826 - SYS - INFO - {'event': 'server_terminate', 'name': 'Iris'}
+2024-06-22 11:14:37,826 - SYS - INFO - {'event': 'server_terminate', 'name': 'STRATOS'}
+2024-06-22 11:14:40,498 - SYS - INFO - {'event': 'server_start', 'name': 'Iris', 'port': 5000}
+2024-06-22 11:14:40,501 - SYS - INFO - {'event': 'server_start', 'name': 'STRATOS', 'port': 5001}
+2024-06-22 11:15:11,673 - SYS - INFO - Shutdown signal received.
+2024-06-22 11:15:11,674 - SYS - INFO - {'event': 'server_terminate', 'name': 'Iris'}
+2024-06-22 11:15:11,675 - SYS - INFO - {'event': 'server_terminate', 'name': 'STRATOS'}
+2024-06-22 11:15:11,811 - SYS - INFO - Shutdown signal received.
+2024-06-22 11:15:11,812 - SYS - INFO - {'event': 'server_terminate', 'name': 'Iris'}
+2024-06-22 11:15:11,812 - SYS - INFO - {'event': 'server_terminate', 'name': 'STRATOS'}
+2024-06-22 11:15:13,971 - SYS - INFO - {'event': 'server_start', 'name': 'Iris', 'port': 5000}
+2024-06-22 11:15:13,974 - SYS - INFO - {'event': 'server_start', 'name': 'STRATOS', 'port': 5001}
