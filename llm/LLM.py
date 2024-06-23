@@ -51,14 +51,15 @@ class LLM:
         )
 
         # Add the outgoing message and the incoming response to the completion log.
-        self.completion_log.append({
+        completion = {
             "model": model,
             "conversation": conversation + [response]
-        })
+        }
+        self.completion_log.append(completion)
 
         # Notify listeners
         for listener in self.listeners:
-            await listener(self.completion_log[-1])
+            await listener(completion)
 
         return response
 
@@ -75,22 +76,14 @@ class LLM:
 
     
     def _create_conversation_completion(self, model, conversation: List[LLMMessage]) -> LLMMessage:
-        client = Anthropic(
-            # This is the default and can be omitted
-            api_key=os.environ.get("ANT_API_KEY"),
-        )
+        client = Anthropic(api_key=os.environ.get("ANT_API_KEY"))
         model = get_environment_variable('CLAUDE_DEFAULT_MODEL')
-        # model='claude-3-opus-20240229'
-        # print("_create_conversation_completion called for conversation: " + str(conversation))
         
         messages = [
-            {"role": "assistant" if msg["role"] == "system" else msg["role"], "content": msg["content"] + (" Remember, if using json, start your completion response only with ```json" if msg["role"] == "user" else "")}
+            {"role": "assistant" if msg["role"] == "system" else msg["role"], "content": msg["content"]}
             for msg in conversation
         ]
 
-        
-
-        #Changes go here
         combined_messages = []
         prev_role = None
         for msg in messages:
@@ -104,11 +97,13 @@ class LLM:
 
         if messages[0]["role"] != "user":
             messages.insert(0, {"role": "user", "content": "Hello!"})
+        
         response = client.messages.create(
             model=model,
             messages=messages,
             max_tokens=4000,
         )
+        
         return {
             "role": "assistant",
             "content": response.content[0].text,

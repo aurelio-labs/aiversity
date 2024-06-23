@@ -145,3 +145,28 @@ Focus on the task at hand and provide only the necessary information, avoiding u
 
 Only include valid actions, don't make up any new action types.
 """
+
+act_on_wakeup_alarm = """
+I have been woken up by my wakeup alarm.
+
+# Whiteboard
+Here are my current whiteboard contents:
+```
+[whiteboard]
+```
+Keep this up-to-date whenever needed using the update_whiteboard action.
+
+# Your instruction
+Decide which actions I should take based on the current contents of my whiteboard.
+Your response should contain only a json-formatted array of actions for me to take
+(or empty array if no actions are needed), like this:
+```json
+[... actions ... ]
+```
+The actions may or may not include a send_message_to_user action.
+Focus on the task at hand and provide only the necessary information, avoiding unnecessary or overly human-like language.
+I should respond to any message that is addressed to me (directly or indirectly).
+
+Only include valid actions, don't make up any new action types.
+Don't include anything else but the correctly formatted json, don't even start with "Here are the actions that I will take:".
+"""

@@ -5,26 +5,20 @@ from starlette.websockets import WebSocket
 
 class WebSocketConnectionManager:
     def __init__(self):
-        self.active_connections = []
+        self.active_connections = {}
 
-    async def connect(self, websocket: WebSocket):
-        print("connect socket")
+    async def connect(self, user_id: str, websocket: WebSocket):
         await websocket.accept()
-        self.active_connections.append(websocket)
+        self.active_connections[user_id] = websocket
 
-    async def disconnect(self, websocket: WebSocket):
-        print("disconnect socket")
-        self.active_connections.remove(websocket)
+    async def disconnect(self, user_id: str):
+        if user_id in self.active_connections:
+            del self.active_connections[user_id]
 
-    async def send_message(self, message):
-        closed_connections = []
-        for connection in self.active_connections:
-            try:
-                print("Sending message to socket")
-                await connection.send_text(json.dumps(message))
-                print("Successfully sent message to socket")
-            except Exception:
-                print("Socket not open, marking for removal from active connections")
-                closed_connections.append(connection)
-        for closed_connection in closed_connections:
-            self.active_connections.remove(closed_connection)
+    async def send_message(self, user_id: str, message):
+        if user_id in self.active_connections:
+            await self.active_connections[user_id].send_text(json.dumps(message))
+
+    async def broadcast(self, message):
+        for websocket in self.active_connections.values():
+            await websocket.send_text(json.dumps(message))

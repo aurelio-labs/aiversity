@@ -1,6 +1,6 @@
 import asyncio
 import re
-from typing import Optional
+from typing import List, Optional
 from ARCANE.actions.action import Action
 from ARCANE.actions.generic_agent_actions import (
     SetNextAlarm, UpdateWhiteboard
@@ -11,7 +11,7 @@ from util import parse_json
 
 from ARCANE.actions.file_manipulation import ViewFileContents, EditFileContents, CreateNewFile, RunPythonFile, QueryFileSystem
 from ARCANE.actions.triage_agent_actions import SendMessageToStratos, SendMessageToStudent
-
+import json
 
 class ActionEnabledLLM:
     def __init__(self, llm: LLM, model: str, action_layer):
@@ -19,29 +19,39 @@ class ActionEnabledLLM:
         self.model = model
         self.action_layer = action_layer
 
-    async def talk_to_llm_and_execute_actions(
-            self, communication_channel: CommunicationChannel, llm_messages: [LLMMessage]):
-        llm_response: LLMMessage = await self.llm.create_conversation_completion(self.model, llm_messages)
-        llm_response_content = llm_response["content"].strip()
-        if llm_response_content:
-            llm_messages.append(llm_response)
+        
 
-            print("Raw LLM response:\n" + llm_response_content)
 
-            actions = self.parse_actions(communication_channel, llm_response_content)
+    async def talk_to_llm_and_execute_actions(self, communication_channel, llm_messages: List[LLMMessage]) -> str:
+        try:
+            llm_response: LLMMessage = await self.llm.create_conversation_completion(self.model, llm_messages)
+            
+            if not llm_response or not llm_response.get('content'):
+                return "I apologize, but I couldn't generate a response at this time."
+            
+            response_content = llm_response['content']
+            
+            try:
+                actions = json.loads(response_content)
+            except json.JSONDecodeError:
+                # If it's not JSON, treat it as a simple message
+                return response_content
 
-            # Start all actions in parallel
-            running_actions = []
+            response_to_user = ""
             for action in actions:
-                running_actions.append(
-                    self.execute_action_and_send_result_to_llm(
-                        action, communication_channel, llm_messages
-                    )
-                )
-            # Wait for all actions to finish
-            await asyncio.gather(*running_actions)
-        else:
-            print("LLM response was empty, so I guess we are done here.")
+                if action['action'] == 'send_message_to_student':
+                    response_to_user += action['message'] + "\n"
+                elif action['action'] == 'update_whiteboard':
+                    await self.action_layer.update_whiteboard(action['contents'])
+                elif action['action'] == 'wake_again_soon':
+                    await self.action_layer.set_next_alarm(action['seconds'])
+            
+            return response_to_user.strip()
+        
+        except Exception as e:
+            error_message = f"An error occurred while processing your request: {str(e)}"
+            print(error_message)
+            return error_message
 
     async def execute_action_and_send_result_to_llm(
             self, action: Action, communication_channel: CommunicationChannel,
