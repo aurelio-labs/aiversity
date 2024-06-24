@@ -2,6 +2,7 @@ from ARCANE.action_layer import ActionLayer
 from llm.LLM import LLM
 from typing import Dict, List
 from ARCANE.types import ChatMessage, create_chat_message
+import json
 
 class ArcaneSystem:
     def __init__(self, name, llm: LLM, model: str, logger):
@@ -34,10 +35,31 @@ class ArcaneSystem:
             chat_history=self.chat_histories[user_id]
         )
 
-        if response:  # Only send and add to history if there's a response
-            await communication_channel.send_message(response)
-            agent_message = create_chat_message(self.name, response)
+        if response:
+            # Process the response to extract the message
+            processed_response = self.process_response(response)
+            
+            # Send the processed response
+            await communication_channel.send_message(processed_response)
+            
+            # Add the processed response to chat history
+            agent_message = create_chat_message(self.name, processed_response)
             self.chat_histories[user_id].append(agent_message)
+
+        return processed_response  # Return the processed response
+
+    def process_response(self, response):
+        if isinstance(response, str):
+            try:
+                actions = json.loads(response)
+                if isinstance(actions, list):
+                    for action in actions:
+                        if action.get('action') == 'send_message_to_student':
+                            return action.get('message', '')
+                return response  # Return original if not expected format
+            except json.JSONDecodeError:
+                return response  # Return original if not valid JSON
+        return str(response)  # Convert to string if not already
 
     def prune_chat_history(self, user_id: str, max_messages: int = 10):
         """Keep only the last `max_messages` in the chat history."""

@@ -114,10 +114,30 @@ class FastApiApp:
         def root():
             return f'<html>{self.arcane_system.name} SYSTEM RESPONSE: The backend is up and running! <a href="chat?message=hi">/chat?message=hi</a></html>'
 
+
     async def process_websocket_message(self, user_id: str, message: str):
         messages: [ChatMessage] = [create_chat_message("api-user", message)]
         communication_channel = WebCommunicationChannel(messages, self.chatConnectionManager, self.arcane_system, user_id)
-        await self.arcane_system.process_incoming_user_message(communication_channel, user_id)
+        response = await self.arcane_system.process_incoming_user_message(communication_channel, user_id)
+        
+        # Process the response
+        processed_response = self.process_response(response)
+        
+        # Send the processed response
+        await self.chatConnectionManager.send_message(user_id, create_chat_message(self.arcane_system.name, processed_response))
+
+    def process_response(self, response):
+        if isinstance(response, str):
+            try:
+                actions = json.loads(response)
+                if isinstance(actions, list):
+                    for action in actions:
+                        if action.get('action') == 'send_message_to_student':
+                            return action.get('message', '')
+                return response  # Return original if not expected format
+            except json.JSONDecodeError:
+                return response  # Return original if not valid JSON
+        return str(response)  # Convert to string if not already
 
     def setup_listeners(self):
         self.llm.add_completion_listener(self.llm_completion_listener)

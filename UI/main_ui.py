@@ -272,10 +272,8 @@ class SharedWorkspace(QWidget):
 
 
     def triage_agent_response(self, response_message):
-        # Stop the animation timer
         self.processing_animation_timer.stop()
 
-        # Remove the processing message if it exists
         cursor = self.chat_history.textCursor()
         cursor.movePosition(cursor.End)
         cursor.movePosition(cursor.StartOfBlock, cursor.KeepAnchor)
