@@ -103,14 +103,6 @@ class ActionLayer():
                 {self.prompts.knowledge.replace("[current_time_utc]", current_time_utc)}
                 {self.prompts.whiteboard}
                 {self.prompts.actions}
-                {self.prompts.alarm_clock}
-                
-                Important: Always respond in valid JSON format with an array of action objects. Each action object should have an 'action' field and any necessary additional fields. The possible actions are:
-                1. 'send_message_to_student': Include a 'message' field with the text to send to the student.
-                2. 'update_whiteboard': Include a 'contents' field with the new whiteboard contents.
-                3. 'wake_again_soon': Include a 'seconds' field with the number of seconds to wait before waking up.
-
-                Maintain context throughout the conversation. If asked about previous messages or the user's name, refer to the chat history provided. Do not assume or invent information not present in the chat history.
         """
         return system_message
 

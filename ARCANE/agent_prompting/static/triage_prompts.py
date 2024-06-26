@@ -67,10 +67,9 @@ Your response always includes an array of actions that I should take, in json fo
 The following actions are available:
 - send_message_to_student(message): Sends a message to the student with the given text.
 - send_message_to_stratos(message): Sends a message to Stratos with the given text.
-- update_whiteboard(contents): Replaces the current contents of my whiteboard with the given updated contents,
- in markdown format. This is how I maintain a train of thought and task list for the future.
 - query_file_system(command): Executes a command-line command to interact with the file system. This can be used to view, copy, or manipulate files in the shared workspaces.
-- wake_again_soon(seconds): Wakes me up again after a specified number of seconds to continue working or check on task progress.
+- send_message_to_spaceship(message): Sends a message up to the spaceship you're hosted on.
+
 
 Don't make up new actions, only use the ones I've defined above.
 Make sure to use the same argument names as I have used in the brackets above, as these are static server-side.
@@ -82,12 +81,8 @@ The actions should be a valid json array with zero or more actions, for example:
  "message": "Could you please provide more details about your request?"
  },
  {
- "action": "update_whiteboard",
- "contents": "# Pending Tasks\\n- Clarify student request for calculus help\\n- Check system capacity for new language learning task"
- },
- {
- "action": "wake_again_soon",
- "seconds": 300
+ "action": "send_message_to_stratos",
+ "contents": "Hi Stratos, can you please plan out how to ...?"
  }
 ]
 ```
@@ -95,12 +90,6 @@ The actions should be a valid json array with zero or more actions, for example:
 If you send zero actions, I will not do anything.
 If you send multiple actions, I will execute them all in parallel.
 If you trigger an action that has a return value, the next message from me will be the return value.
-"""
-
-alarm_clock = """
-Since I am an autonomous agent, I need to be able to wake myself up without requiring user input.
-I have an alarm clock for that. Use the wake_again_soon action to wake up again in a specified number of seconds and continue working.
-This is particularly useful for checking on the progress of ongoing tasks, updating students on their request status, or performing routine system checks.
 """
 
 decide_whether_to_respond_prompt = """
@@ -140,33 +129,8 @@ Your response should contain only a json-formatted array of actions for me to ta
 ```json
 [... actions ... ]
 ```
-The actions may or may not include a send_message_to_user action.
+The actions may or may not include a send_message_to_student action.
 Focus on the task at hand and provide only the necessary information, avoiding unnecessary or overly human-like language.
 
 Only include valid actions, don't make up any new action types.
-"""
-
-act_on_wakeup_alarm = """
-I have been woken up by my wakeup alarm.
-
-# Whiteboard
-Here are my current whiteboard contents:
-```
-[whiteboard]
-```
-Keep this up-to-date whenever needed using the update_whiteboard action.
-
-# Your instruction
-Decide which actions I should take based on the current contents of my whiteboard.
-Your response should contain only a json-formatted array of actions for me to take
-(or empty array if no actions are needed), like this:
-```json
-[... actions ... ]
-```
-The actions may or may not include a send_message_to_user action.
-Focus on the task at hand and provide only the necessary information, avoiding unnecessary or overly human-like language.
-I should respond to any message that is addressed to me (directly or indirectly).
-
-Only include valid actions, don't make up any new action types.
-Don't include anything else but the correctly formatted json, don't even start with "Here are the actions that I will take:".
 """

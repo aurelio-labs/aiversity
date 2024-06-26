@@ -13,7 +13,7 @@ async def arcane_base_main(name, descriptor, model, port):
     logger = setup_logger(name)
 
     anthropic_api_key = get_environment_variable('ANT_API_KEY')
-    llm = LLM("anthropic", anthropic_api_key)
+    llm = LLM(logger)
     weaviate_url = get_environment_variable('WEAVIATE_URL')
     # memory_manager = WeaviateMemoryManager(weaviate_url, anthropic_api_key)
     # serpapi_key = get_environment_variable('SERPAPI_KEY')

@@ -23,6 +23,7 @@ class ActionEnabledLLM:
 
 
     async def talk_to_llm_and_execute_actions(self, communication_channel, llm_messages: List[LLMMessage]) -> str:
+        # from remote_pdb import RemotePdb; RemotePdb('0.0.0.0', 5678).set_trace()
         try:
             llm_response: LLMMessage = await self.llm.create_conversation_completion(self.model, llm_messages)
             
@@ -45,6 +46,8 @@ class ActionEnabledLLM:
                     await self.action_layer.update_whiteboard(action['contents'])
                 elif action['action'] == 'wake_again_soon':
                     await self.action_layer.set_next_alarm(action['seconds'])
+                elif action['action'] == 'query_file_system':
+                    await self.action_layer.query_file_system(action['command'])
             
             return response_to_user.strip()
         

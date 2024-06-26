@@ -77,11 +77,6 @@ For example:
 That will automatically be replaced by a generated image.
 """
 
-alarm_clock = """
-Since I am an autonomous agent, I need to be able to wake myself up without requiring user input.
-I have an alarm clock for that. Use the wake_again_soon action to wake up again in 5 seconds and continue working.
-"""
-
 actions = """
 # Actions
 Your response always includes an array of actions that I should take, in json format.
@@ -90,7 +85,6 @@ The following actions are available.
  If anything happens that you think needs to be remembered for the future, use the save_memory action.
 - update_whiteboard(contents): Replaces the current contents of my whiteboard with the given updated contents,
  in markdown format. This is how I maintain a train of thought and task list for the future.
-- wake_again_soon(seconds): Wakes me up again a certain number of seconds to continue working. You work on accelerated timelines.
 
 Don't make up new actions, only use the ones I've defined above.
 Make sure to use the same argument names as I have used in the brackets above, as these are static server-side.
@@ -100,9 +94,6 @@ The actions should be a valid json array with zero or more actions, for example:
  {
  "action": "get_web_content",
  "url": "https://example.com"
- },
- {
- "action": "wake_again_soon"
  },
  {
  "action": "update_whiteboard",

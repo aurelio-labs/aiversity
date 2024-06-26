@@ -1,18 +1,14 @@
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
-from typing import List, TypedDict, Optional, Callable
+from typing import List, TypedDict, Optional, Callable, Dict, Any
 from anthropic import Anthropic
-import openai
 import os
-
+import json
 from util import get_environment_variable
-
 
 class LLMMessage(TypedDict):
     role: str
-    name: Optional[str]
     content: str
-
 
 class ChatCompletion(TypedDict):
     model: str
@@ -20,119 +16,90 @@ class ChatCompletion(TypedDict):
 
 
 class LLM:
-    def __init__(self, provider, api_key):
-        self.provider = provider
-        self.api_key = api_key
-        if provider == "anthropic":
-            self.anthropic_api_key = api_key
-        else:
-            raise EnvironmentError(f"{provider} is not a valid API provider")
-
+    def __init__(self, logging):
+        self.api_key = get_environment_variable('ANT_API_KEY')
+        self.model = get_environment_variable('CLAUDE_DEFAULT_MODEL')
+        self.client = Anthropic(api_key=self.api_key)
         self.executor = ThreadPoolExecutor()
         self.completion_log: List[ChatCompletion] = []
         self.listeners = set()
+        self.logging = logging
 
-    def get_completion_log(self) -> List[ChatCompletion]:
-        return self.completion_log
+    async def create_chat_completion(self, system_message: str, user_message: str) -> List[Dict[str, Any]]:
+        conversation = [
+            {"role": "system", "content": system_message},
+            {"role": "user", "content": user_message}
+        ]
+        return await self.create_conversation_completion(conversation)
 
-    async def create_chat_completion(self, model, system_message, user_message) -> str:
-        response = await self.create_conversation_completion(model, [
-            {"role": "system", "name": "system", "content": system_message},
-            {"role": "user", "name": "user", "content": user_message}
-        ])
-        return response["content"]
-
-    async def create_conversation_completion(self, model, conversation: List[LLMMessage]) -> LLMMessage:
-        loop = asyncio.get_event_loop()
-        response = await loop.run_in_executor(
-            self.executor,
-            self._create_conversation_completion,
-            model, conversation
-        )
-
-        # Add the outgoing message and the incoming response to the completion log.
-        completion = {
-            "model": model,
-            "conversation": conversation + [response]
-        }
-        self.completion_log.append(completion)
-
-        # Notify listeners
-        for listener in self.listeners:
-            await listener(completion)
-
-        return response
-
-    # def _create_conversation_completion(self, model, conversation: List[LLMMessage]) -> LLMMessage:
-    #     print("_create_conversation_completion called for conversation: " + str(conversation))
-    #     openai.api_key = self.api_key
-    #     chat_completion = openai.ChatCompletion.create(
-    #         model=model,
-    #         messages=conversation
-    #     )
-    #     response = chat_completion.choices[0].message
-    #     return response
-
-
-    
-    def _create_conversation_completion(self, model, conversation: List[LLMMessage]) -> LLMMessage:
-        client = Anthropic(api_key=os.environ.get("ANT_API_KEY"))
-        model = get_environment_variable('CLAUDE_DEFAULT_MODEL')
-        
+    async def create_conversation_completion(self, conversation: List[Dict[str, str]]) -> List[Dict[str, Any]]:
         messages = [
             {"role": "assistant" if msg["role"] == "system" else msg["role"], "content": msg["content"]}
             for msg in conversation
         ]
 
-        combined_messages = []
-        prev_role = None
-        for msg in messages:
-            if msg["role"] == prev_role:
-                combined_messages[-1]["content"] += "\n" + msg["content"]
-            else:
-                combined_messages.append(msg)
-                prev_role = msg["role"]
-
-        messages = combined_messages
-
         if messages[0]["role"] != "user":
             messages.insert(0, {"role": "user", "content": "Hello!"})
-        
-        response = client.messages.create(
-            model=model,
+
+        response = self.client.messages.create(
+            model=self.model,
             messages=messages,
             max_tokens=4000,
+            tools=[
+                {
+                    "name": "create_action",
+                    "description": "Create a structured action for the AI system to execute",
+                    "input_schema": {
+                        "type": "object",
+                        "properties": {
+                            "actions": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "action": {
+                                            "type": "string",
+                                            "enum": ["send_message_to_student", "query_file_system", "send_message_to_stratos", "send_message_to_spaceship"],
+                                            "description": "The type of action to perform"
+                                        },
+                                        "params": {
+                                            "type": "object",
+                                            "properties": {
+                                                "message": {"type": "string"},
+                                                "contents": {"type": "string"},
+                                                "command": {"type": "string"},
+                                                "should_reassess": {"type": "boolean"},
+                                                "reason": {"type": "string"}
+                                            }
+                                        }
+                                    },
+                                    "required": ["action", "params"]
+                                }
+                            }
+                        },
+                        "required": ["actions"]
+                    }
+                }
+            ]
         )
-        
-        return {
-            "role": "assistant",
-            "content": response.content[0].text,
-        }
 
-    async def create_image(self, prompt, size='256x256') -> str:
-        loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(
-            self.executor,
-            self._create_image,
-            prompt, size
-        )
+        actions = []
+        try:
+            for content_item in response.content:
+                if hasattr(content_item, 'name') and content_item.name == "create_action":
+                    if hasattr(content_item, 'input') and isinstance(content_item.input, dict):
+                        actions.extend(content_item.input.get("actions", []))
+        except Exception as e:
+            logging.error(f"Error processing response content: {e}")
+            logging.debug(f"Response content: {response.content}")
 
-    def _create_image(self, prompt, size='256x256') -> str:
-        print("Generating image for prompt: " + prompt)
-        openai.api_key = self.api_key
-        result = openai.Image.create(
-            prompt=prompt,
-            n=1,
-            size=size
-        )
-        image_url = result.data[0].url
-        print(".... finished generating image for prompt" + prompt + ":\n" + image_url)
-        return image_url
+        if not actions:
+            logging.warning("No actions were generated from the LLM response.")
 
+        return actions
+    
     def add_completion_listener(self, listener: Callable[[ChatCompletion], None]) -> None:
-        """Add a listener to be notified of completions."""
         self.listeners.add(listener)
 
     def remove_completion_listener(self, listener: Callable[[ChatCompletion], None]) -> None:
-        """Remove a listener."""
         self.listeners.discard(listener)
