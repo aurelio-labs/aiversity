@@ -33,26 +33,12 @@ class ArcaneSystem:
 
         self.prune_chat_history(user_id)
 
+        plan, actions = await self.arcane_architecture.process_message(user_id, self.chat_histories[user_id], communication_channel)
 
-        plan = await self.arcane_architecture.process_message(user_id, self.chat_histories[user_id], communication_channel)
+        # Send actions to the frontend
+        await communication_channel.send_actions(actions)
 
-        # response = await self.action_agent.process_incoming_user_message(
-        #     communication_channel=communication_channel,
-        #     chat_history=self.chat_histories[user_id]
-        # )
-
-        # if response:
-        #     # Process the response to extract the message
-        #     processed_response = self.process_response(response)
-            
-        #     # Send the processed response
-        #     await communication_channel.send_message(processed_response)
-            
-        #     # Add the processed response to chat history
-        #     agent_message = create_chat_message(self.name, processed_response)
-        #     self.chat_histories[user_id].append(agent_message)
-
-        return plan  # Return the processed response
+        return plan, actions
 
     def process_response(self, response):
         if isinstance(response, str):

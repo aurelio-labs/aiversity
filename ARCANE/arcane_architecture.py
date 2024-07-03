@@ -25,10 +25,41 @@ class ArcaneArchitecture:
         self.action_log = []
 
     async def process_message(self, user_id: str, chat_history: List[ChatMessage], communication_channel: CommunicationChannel):
-        # RemotePdb('0.0.0.0', 5678).set_trace()
         initial_plan = await self.generate_plan(chat_history)
-        final_result = await self.execute_plan(initial_plan, chat_history, communication_channel)
-        return final_result
+        final_result, actions = await self.execute_plan(initial_plan, chat_history, communication_channel)
+        return final_result, actions
+
+    async def execute_plan(self, plan: List[Dict], chat_history: List[ChatMessage], communication_channel: CommunicationChannel):
+        actions = []
+        for action_data in plan:
+            action = self.parse_action(communication_channel, action_data)
+            
+            if action is None:
+                self.logger.warning(f"Unknown action: {action_data}")
+                action = SendMessageToStudent(
+                    communication_channel,
+                    "I apologize, but I encountered an error while processing your request. Could you please rephrase or provide more details?"
+                )
+            
+            success, result = await action.execute()
+            action_log_entry = {"action": action_data, "result": result, "success": success}
+            self.action_log.append(action_log_entry)
+            actions.append(action_log_entry)
+            
+            if not success:
+                self.logger.error(f"Action failed: {result}")
+                should_reassess, reassessment_reason = await self.should_reassess_plan(result, chat_history)
+                
+                if should_reassess:
+                    self.logger.info(f"Reassessing plan due to: {reassessment_reason}")
+                    new_plan = await self.generate_plan(chat_history)
+                    return await self.execute_plan(new_plan, chat_history, communication_channel)
+                else:
+                    # If we decide not to reassess, we should at least inform the user of the error
+                    await communication_channel.send_message(f"I encountered an issue: {result}. I'll do my best to continue with the current plan.")
+
+        return self.action_log[-1]["result"] if self.action_log else None, actions
+
 
     async def generate_plan(self, chat_history: List[ChatMessage]):
         planning_prompt = self.create_planning_prompt(chat_history)
@@ -99,34 +130,6 @@ class ArcaneArchitecture:
         }}
         Only use the create_action function once to provide your decision.
         """
-
-    async def execute_plan(self, plan: List[Dict], chat_history: List[ChatMessage], communication_channel: CommunicationChannel):
-        for action_data in plan:
-            action = self.parse_action(communication_channel, action_data)
-            
-            if action is None:
-                self.logger.warning(f"Unknown action: {action_data}")
-                action = SendMessageToStudent(
-                    communication_channel,
-                    "I apologize, but I encountered an error while processing your request. Could you please rephrase or provide more details?"
-                )
-            
-            success, result = await action.execute()
-            self.action_log.append({"action": action_data, "result": result, "success": success})
-            
-            if not success:
-                self.logger.error(f"Action failed: {result}")
-                should_reassess, reassessment_reason = await self.should_reassess_plan(result, chat_history)
-                
-                if should_reassess:
-                    self.logger.info(f"Reassessing plan due to: {reassessment_reason}")
-                    new_plan = await self.generate_plan(chat_history)
-                    return await self.execute_plan(new_plan, chat_history, communication_channel)
-                else:
-                    # If we decide not to reassess, we should at least inform the user of the error
-                    await communication_channel.send_message(f"I encountered an issue: {result}. I'll do my best to continue with the current plan.")
-
-        return self.action_log[-1]["result"] if self.action_log else None
 
 
     def parse_action(self, communication_channel: CommunicationChannel, action_data: dict):

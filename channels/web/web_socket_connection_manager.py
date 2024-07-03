@@ -22,3 +22,7 @@ class WebSocketConnectionManager:
     async def broadcast(self, message):
         for websocket in self.active_connections.values():
             await websocket.send_text(json.dumps(message))
+
+    async def send_actions(self, user_id: str, actions):
+        if user_id in self.active_connections:
+            await self.active_connections[user_id].send_text(json.dumps({"type": "actions", "data": actions}))

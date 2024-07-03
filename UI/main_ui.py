@@ -9,7 +9,7 @@ from PyQt5.QtWidgets import (QApplication, QWidget, QVBoxLayout, QHBoxLayout,
                              QListWidget, QLabel, QTextBrowser, QLineEdit, 
                              QPushButton, QSplitter, QListWidgetItem, 
                              QFileIconProvider, QAbstractItemView, QScrollArea)
-from PyQt5.QtCore import Qt, QFileInfo, QSize, QDateTime, QTimer
+from PyQt5.QtCore import Qt, QFileInfo, QSize, QDateTime, QTimer, pyqtSignal
 from PyQt5.QtGui import QIcon, QPixmap, QColor, QPalette
 import uuid
 
@@ -56,9 +56,11 @@ class CustomListWidget(QListWidget):
             self.takeItem(self.row(item))
 
 class SharedWorkspace(QWidget):
+    actionReceived = pyqtSignal(list)
+
     def __init__(self):
         super().__init__()
-        self.user_id = str(uuid.uuid4())  # Generate a unique user ID
+        self.user_id = str(uuid.uuid4())
         self.init_ui()
 
     def init_ui(self):
@@ -252,24 +254,19 @@ class SharedWorkspace(QWidget):
         cursor = self.chat_history.textCursor()
         cursor.movePosition(cursor.End)
         
-        # Find the processing animation span
         cursor.movePosition(cursor.StartOfBlock, cursor.KeepAnchor)
         selected_text = cursor.selectedText()
         
         animation_start = selected_text.find("Processing ")
         if animation_start != -1:
-            # Remove only the existing animation frame
             new_text = f"{selected_text[:animation_start]}Processing {current_frame}"
             cursor.removeSelectedText()
             cursor.insertHtml(new_text)
         else:
-            # If not found, insert a new processing message
             cursor.movePosition(cursor.End)
             cursor.insertHtml(f"<br><span style='color: #FFFFFF;'>Processing {current_frame}</span>")
 
-        # Ensure the view scrolls to show the latest text
         self.chat_history.ensureCursorVisible()
-
 
     def triage_agent_response(self, response_message):
         self.processing_animation_timer.stop()
@@ -285,26 +282,44 @@ class SharedWorkspace(QWidget):
             cursor.movePosition(cursor.End)
 
         try:
-            # Parse the JSON response
-            response_data = json.loads(response_message)
+            # Check if response_message is already a dictionary
+            if isinstance(response_message, dict):
+                response_data = response_message
+            else:
+                response_data = json.loads(response_message)
+            
             sender = response_data.get("sender", "Triage Agent")
             content = response_data.get("content", "")
             timestamp = response_data.get("time_utc", "")
 
-            # Convert UTC time to local time
             utc_time = QDateTime.fromString(timestamp, Qt.ISODate)
             local_time = utc_time.toLocalTime()
             formatted_time = local_time.toString("yyyy-MM-dd HH:mm:ss")
 
-            # Insert the agent's response
             self.chat_history.append(f"<span style='color: #2ECC40;'>[{formatted_time}] {sender}:</span> {content}")
-        except json.JSONDecodeError:
-            # If JSON parsing fails, display the raw message
+        except (json.JSONDecodeError, AttributeError):
             timestamp = QDateTime.currentDateTime().toString("yyyy-MM-dd HH:mm:ss")
             self.chat_history.append(f"<span style='color: #2ECC40;'>[{timestamp}] Triage Agent:</span> {response_message}")
 
-        # Ensure the view scrolls to show the latest text
         self.chat_history.ensureCursorVisible()
+
+    async def receive_messages(self):
+        url = f"ws://localhost:5000/ws-chat/{self.user_id}"
+        async with ClientSession() as session:
+            async with session.ws_connect(url) as websocket:
+                while True:
+                    message = await websocket.receive()
+                    if message.type == aiohttp.WSMsgType.TEXT:
+                        data = json.loads(message.data)
+                        if 'type' in data and data['type'] == 'actions':
+                            self.actionReceived.emit(data['data'])
+                        elif 'content' in data:
+                            self.triage_agent_response(data['content'])
+                    elif message.type == aiohttp.WSMsgType.CLOSED:
+                        break
+                    elif message.type == aiohttp.WSMsgType.ERROR:
+                        print("WebSocket connection closed with exception:", websocket.exception())
+                        break
 
     def send_message(self):
         message = self.chat_input.text().strip()
@@ -314,8 +329,7 @@ class SharedWorkspace(QWidget):
             self.chat_history.append(f"<span style='color: #FFFFFF;'>Processing {self.processing_animation_frames[0]}</span>")
             asyncio.create_task(self.send_message_to_backend(message))
             self.chat_input.clear()
-            self.processing_animation_timer.start(100)  # Update every 100ms
-
+            self.processing_animation_timer.start(100)
 
     async def send_message_to_backend(self, message):
         url = "http://localhost:5000/chat/"
@@ -324,31 +338,79 @@ class SharedWorkspace(QWidget):
                 if response.status == 200:
                     data = await response.json()
                     print(f"Message sent successfully. User ID: {data['user_id']}")
+                    if 'actions' in data:
+                        self.actionReceived.emit(data['actions'])
                 else:
                     print(f"Failed to send message. Status: {response.status}")
 
-    async def receive_messages(self):
-        url = f"ws://localhost:5000/ws-chat/{self.user_id}"
-        async with ClientSession() as session:
-            async with session.ws_connect(url) as websocket:
-                while True:
-                    message = await websocket.receive()
-                    if message.type == aiohttp.WSMsgType.TEXT:
-                        self.triage_agent_response(message.data)
-                    elif message.type == aiohttp.WSMsgType.CLOSED:
-                        break
-                    elif message.type == aiohttp.WSMsgType.ERROR:
-                        print("WebSocket connection closed with exception:", websocket.exception())
-                        break
 
 
+class ActionListWindow(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.init_ui()
 
-if __name__ == "__main__":
+    def init_ui(self):
+        self.setWindowTitle("Agent Actions")
+        self.setGeometry(900, 100, 400, 600)
+        self.setup_palette()
+
+        layout = QVBoxLayout()
+        layout.setSpacing(10)
+
+        action_label = QLabel("Agent Actions")
+        action_label.setStyleSheet("font-size: 16px; font-weight: bold; color: #FFFFFF; margin-bottom: 10px;")
+        layout.addWidget(action_label)
+
+        self.action_list = CustomListWidget()
+        layout.addWidget(self.action_list)
+
+        self.setLayout(layout)
+
+    def setup_palette(self):
+        palette = QPalette()
+        palette.setColor(QPalette.Window, QColor(53, 53, 53))
+        palette.setColor(QPalette.WindowText, Qt.white)
+        palette.setColor(QPalette.Base, QColor(25, 25, 25))
+        palette.setColor(QPalette.AlternateBase, QColor(53, 53, 53))
+        palette.setColor(QPalette.ToolTipBase, Qt.black)
+        palette.setColor(QPalette.ToolTipText, Qt.white)
+        palette.setColor(QPalette.Text, Qt.white)
+        palette.setColor(QPalette.Button, QColor(53, 53, 53))
+        palette.setColor(QPalette.ButtonText, Qt.white)
+        palette.setColor(QPalette.BrightText, Qt.red)
+        palette.setColor(QPalette.Link, QColor(42, 130, 218))
+        palette.setColor(QPalette.Highlight, QColor(42, 130, 218))
+        palette.setColor(QPalette.HighlightedText, Qt.black)
+        self.setPalette(palette)
+
+    def update_action_list(self, actions):
+        self.action_list.clear()
+        for action in actions:
+            action_data = action['action']
+            result = action['result']
+            success = action['success']
+            
+            action_str = f"Action: {action_data['action']}\n"
+            action_str += f"Params: {json.dumps(action_data['params'], indent=2)}\n"
+            action_str += f"Success: {success}\n"
+            action_str += f"Result: {result}\n"
+            
+            item = QListWidgetItem(action_str)
+            self.action_list.addItem(item)
+
+async def main():
     app = QApplication(sys.argv)
     loop = qasync.QEventLoop(app)
     asyncio.set_event_loop(loop)
+
     workspace = SharedWorkspace()
+    action_window = ActionListWindow()
+
+    workspace.actionReceived.connect(action_window.update_action_list)
+
     workspace.show()
+    action_window.show()
 
     if sys.platform == "darwin":
         workspace.setAcceptDrops(True)
@@ -357,3 +419,6 @@ if __name__ == "__main__":
     with loop:
         loop.create_task(workspace.receive_messages())
         loop.run_forever()
+
+if __name__ == "__main__":
+    asyncio.run(main())

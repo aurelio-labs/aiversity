@@ -24,6 +24,11 @@ class WebCommunicationChannel(CommunicationChannel):
         if self.messages:
             return self.messages[-1]['content']
         return ""
+    
+    async def send_actions(self, actions):
+        print(f"WebCommunicationChannel.send_actions for user {self.user_id}: {actions}")
+        await self.web_socket.send_actions(self.user_id, actions)
+        print("WebCommunicationChannel sent actions!")
 
     def describe(self):
         return f"Web (User ID: {self.user_id})"
