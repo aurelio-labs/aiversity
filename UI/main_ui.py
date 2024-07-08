@@ -12,6 +12,7 @@ from PyQt5.QtWidgets import (QApplication, QWidget, QVBoxLayout, QHBoxLayout,
 from PyQt5.QtCore import Qt, QFileInfo, QSize, QDateTime, QTimer, pyqtSignal
 from PyQt5.QtGui import QIcon, QPixmap, QColor, QPalette
 import uuid
+import shutil
 
 class AutoScrollTextBrowser(QTextBrowser):
     def __init__(self, parent=None):
@@ -242,6 +243,15 @@ class SharedWorkspace(QWidget):
             item = QListWidgetItem(icon, file_name)
             self.list_widget.addItem(item)
 
+            # Copy the file to the agent's workspace
+            pwd = os.path.dirname(os.getcwd())
+            agent_workspace = os.path.join(pwd, 'aiversity_workspaces', "Iris-5000")
+            os.makedirs(agent_workspace, exist_ok=True)
+            destination = os.path.join(agent_workspace, os.path.basename(file))
+            shutil.copy2(file, destination)
+            print("Copied " + file)
+            print("to " + destination)
+
     def truncate_filename(self, filename, max_length=20, start_chars=10, end_chars=5):
         if len(filename) > max_length:
             return f"{filename[:start_chars]}...{filename[-end_chars:]}"
@@ -387,14 +397,10 @@ class ActionListWindow(QWidget):
     def update_action_list(self, actions):
         self.action_list.clear()
         for action in actions:
-            action_data = action['action']
-            result = action['result']
-            success = action['success']
-            
-            action_str = f"Action: {action_data['action']}\n"
-            action_str += f"Params: {json.dumps(action_data['params'], indent=2)}\n"
-            action_str += f"Success: {success}\n"
-            action_str += f"Result: {result}\n"
+            action_str = f"Action: {action.get('action', 'Unknown')}\n"
+            action_str += f"Params: {json.dumps(action.get('params', {}), indent=2)}\n"
+            action_str += f"Success: {action.get('success', 'Unknown')}\n"
+            action_str += f"Result: {action.get('result', 'Unknown')}\n"
             
             item = QListWidgetItem(action_str)
             self.action_list.addItem(item)

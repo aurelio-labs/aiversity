@@ -61,36 +61,6 @@ Keep the whiteboard structured using markdown. For example, different tasks and 
 by headings or bullet points.
 """
 
-actions = """
-# Actions
-Your response always includes an array of actions that I should take, in json format.
-The following actions are available:
-- send_message_to_student(message): Sends a message to the student with the given text.
-- send_message_to_stratos(message): Sends a message to Stratos with the given text.
-- query_file_system(command): Executes a command-line command to interact with the file system. This can be used to view, copy, or manipulate files in the shared workspaces.
-- send_message_to_spaceship(message): Sends a message up to the spaceship you're hosted on.
-
-
-Don't make up new actions, only use the ones I've defined above.
-Make sure to use the same argument names as I have used in the brackets above, as these are static server-side.
-The actions should be a valid json array with zero or more actions, for example:
-```json
-[
- {
- "action": "send_message_to_student",
- "message": "Could you please provide more details about your request?"
- },
- {
- "action": "send_message_to_stratos",
- "contents": "Hi Stratos, can you please plan out how to ...?"
- }
-]
-```
-
-If you send zero actions, I will not do anything.
-If you send multiple actions, I will execute them all in parallel.
-If you trigger an action that has a return value, the next message from me will be the return value.
-"""
 
 decide_whether_to_respond_prompt = """
 I am an autonomous AI agent named Iris, serving as the triage agent for the AIversity system.
@@ -106,6 +76,35 @@ Guiding principles:
 - Don't respond to messages that are clearly meant for other students or are off-topic
 - If a message is ambiguous, err on the side of responding to ensure no student query goes unanswered
 Answer "yes" to respond or "no" to not respond, followed by one sentence describing why or why not.
+"""
+actions = """
+# Actions
+Your response always includes an array of actions that I should take, in json format.
+The following actions are available:
+- send_message_to_student(message): Sends a message to the student with the given text.
+- send_message_to_stratos(message): Sends a message to Stratos with the given text.
+- query_file_system(command): Executes a command-line command to interact with the file system. This can be used to view, copy, or manipulate files in the shared workspaces.
+- send_message_to_spaceship(message): Sends a message up to the spaceship you're hosted on.
+
+IMPORTANT: After any action that retrieves information or performs a task, you MUST include a send_message_to_student action to communicate the results or acknowledge the completion of the task to the user. The user cannot see the results of your actions directly and relies on your messages to stay informed.
+
+Don't make up new actions, only use the ones I've defined above.
+Make sure to use the same argument names as I have used in the brackets above, as these are static server-side.
+The actions should be a valid json array with one or more actions, for example:
+```json
+[
+ {
+ "action": "query_file_system",
+ "command": "ls -l"
+ },
+ {
+ "action": "send_message_to_student",
+ "message": "I've checked the files in my workspace. Here's what I found: [Include results of the ls -l command here]"
+ }
+]
+```
+
+If you trigger an action that has a return value, make sure to include its results in your message to the student.
 """
 
 act_on_user_input = """
@@ -124,13 +123,18 @@ Keep this up-to-date whenever needed using the update_whiteboard action.
 
 # Your instruction
 Decide which actions I should take in response to the last message.
-Your response should contain only a json-formatted array of actions for me to take
-(or empty array if no actions are needed), like this:
+Your response should contain only a json-formatted array of actions for me to take, like this:
 ```json
 [... actions ... ]
 ```
-The actions may or may not include a send_message_to_student action.
-Focus on the task at hand and provide only the necessary information, avoiding unnecessary or overly human-like language.
+
+IMPORTANT:
+1. Always include a send_message_to_student action as the final action in your response.
+2. If you perform any information-gathering or task execution actions, make sure to communicate the results or acknowledge the completion in your message to the student.
+3. The user can only see messages sent via the send_message_to_student action. They cannot see the results of other actions directly.
+
+Focus on the task at hand and provide clear, concise information in your messages to the student.
+Ensure that every user query or command is addressed with a corresponding response, even if it's just to acknowledge that an action has been taken.
 
 Only include valid actions, don't make up any new action types.
 """

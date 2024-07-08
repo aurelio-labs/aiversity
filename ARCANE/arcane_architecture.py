@@ -1,259 +1,279 @@
-from datetime import datetime, timezone
-from typing import List, Dict, Tuple, Any
-from ARCANE.actions.triage_agent_actions import SendMessageToStudent, SendMessageToStratos
-from ARCANE.actions.file_manipulation import ViewFileContents, EditFileContents, CreateNewFile, RunPythonFile, QueryFileSystem, UpdateWhiteboard
-from ARCANE.actions.send_message_to_spaceship import SendMessageToSpaceship
-from channels.communication_channel import CommunicationChannel
-from llm.LLM import LLM
-from ARCANE.types import ChatMessage
-import json
-from remote_pdb import RemotePdb
-import importlib
-import ARCANE.agent_prompting.static.triage_prompts as prompts
-
-# Reload the module to reflect the latest changes
-importlib.reload(prompts)
-
-
+import asyncio
+from typing import List, Dict, Any, Optional, Tuple
+from datetime import datetime
+import uuid
 import logging
+import importlib
+import json
+from llm.LLM import LLM
+from channels.communication_channel import CommunicationChannel
+import ARCANE.agent_prompting.static.triage_prompts as prompts
+from ARCANE.actions.action import Action
+from ARCANE.actions.triage_agent_actions import SendMessageToStudent
+from ARCANE.actions.file_manipulation import ViewFileContents, EditFileContents, CreateNewFile, RunPythonFile, QueryFileSystem
+from ARCANE.actions.send_message_to_spaceship import SendMessageToSpaceship
+
+class Event:
+    def __init__(self, event_type: str, data: Dict[str, Any], timestamp: Optional[datetime] = None):
+        self.id = str(uuid.uuid4())
+        self.type = event_type
+        self.data = data
+        self.timestamp = timestamp or datetime.now()
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "id": self.id,
+            "type": self.type,
+            "data": self.data,
+            "timestamp": self.timestamp.isoformat()
+        }
+
+class EventLog:
+    def __init__(self):
+        self.events: List[Event] = []
+
+    def add_event(self, event: Event):
+        self.events.append(event)
+
+    def get_recent_events(self, n: int) -> List[Event]:
+        return sorted(self.events, key=lambda e: e.timestamp, reverse=True)[:n]
+
+    def to_narrative(self) -> str:
+        narrative = []
+        for event in sorted(self.events, key=lambda e: e.timestamp):
+            if event.type == "user_message":
+                narrative.append(f"[{event.timestamp}] User: {event.data['content']}")
+            elif event.type == "agent_action":
+                action_data = json.dumps(event.data, indent=2)
+                narrative.append(f"[{event.timestamp}] Agent action:\n{action_data}")
+            elif event.type == "goal_set":
+                narrative.append(f"[{event.timestamp}] Goal set: {event.data['goal']}")
+        return "\n".join(narrative)
 
 class ArcaneArchitecture:
-    def __init__(self, llm: LLM, logger):
+    def __init__(self, llm: LLM, logger: logging.Logger, agent_id: str):
         self.llm = llm
         self.logger = logger
+        self.agent_id = agent_id
+        self.event_logs: Dict[str, EventLog] = {}
         self.prompts = prompts
-        self.action_log = []
+        importlib.reload(prompts)
 
-    async def process_message(self, user_id: str, chat_history: List[ChatMessage], communication_channel: CommunicationChannel):
-        initial_plan = await self.generate_plan(chat_history)
-        final_result, actions = await self.execute_plan(initial_plan, chat_history, communication_channel)
-        return final_result, actions
 
-    async def execute_plan(self, plan: List[Dict], chat_history: List[ChatMessage], communication_channel: CommunicationChannel):
-        actions = []
-        for action_data in plan:
-            action = self.parse_action(communication_channel, action_data)
-            
-            if action is None:
-                self.logger.warning(f"Unknown action: {action_data}")
-                action = SendMessageToStudent(
-                    communication_channel,
-                    "I apologize, but I encountered an error while processing your request. Could you please rephrase or provide more details?"
-                )
-            
-            success, result = await action.execute()
-            action_log_entry = {"action": action_data, "result": result, "success": success}
-            self.action_log.append(action_log_entry)
-            actions.append(action_log_entry)
-            
-            if not success:
-                self.logger.error(f"Action failed: {result}")
-                should_reassess, reassessment_reason = await self.should_reassess_plan(result, chat_history)
+    #from remote_pdb import RemotePdb; RemotePdb('0.0.0.0', 5678).set_trace()
+
+    async def process_message(self, user_id: str, message: str, communication_channel: CommunicationChannel) -> Tuple[str, List[Dict[str, Any]]]:
+        if user_id not in self.event_logs:
+            self.event_logs[user_id] = EventLog()
+
+        self.event_logs[user_id].add_event(Event("user_message", {"content": message}))
+
+        goal = await self.generate_initial_goal(user_id)
+        self.event_logs[user_id].add_event(Event("goal_set", {"goal": goal}))
+
+        executed_actions = []
+        # from remote_pdb import RemotePdb; RemotePdb('0.0.0.0', 5678).set_trace()
+        while not await self.goal_achieved(goal, executed_actions, user_id):
+            narrative = self.event_logs[user_id].to_narrative()
+            next_action = await self.determine_next_action(goal, executed_actions, user_id)
+
+            if next_action and isinstance(next_action, list) and len(next_action) > 0:
+                action_data = next_action[0]  # Take only the first action
+                action_data = action_data['actions'][0]
+                self.event_logs[user_id].add_event(Event("agent_action", action_data))
                 
-                if should_reassess:
-                    self.logger.info(f"Reassessing plan due to: {reassessment_reason}")
-                    new_plan = await self.generate_plan(chat_history)
-                    return await self.execute_plan(new_plan, chat_history, communication_channel)
-                else:
-                    # If we decide not to reassess, we should at least inform the user of the error
-                    await communication_channel.send_message(f"I encountered an issue: {result}. I'll do my best to continue with the current plan.")
+                try:
+                    success, result = await self.execute_action(action_data, communication_channel)
+                    executed_actions.append({"action": action_data, "success": success, "result": result})
+                    
+                    # if action_data['action'] == 'send_message_to_student':
+                    #     self.event_logs[user_id].add_event(Event("agent_message", {"content": action_data['params']['message']}))
+                except Exception as e:
+                    self.logger.error(f"Error executing action: {str(e)}")
+                    executed_actions.append({"action": action_data, "success": False, "error": str(e)})
+                    await communication_channel.send_message(f"An error occurred while processing your request: {str(e)}")
+            else:
+                self.logger.warning("No valid action determined. Ending process.")
+                await communication_channel.send_message("I'm having trouble determining the next step. Could you please provide more information or clarify your request?")
+                break
 
-        return self.action_log[-1]["result"] if self.action_log else None, actions
+        return self.event_logs[user_id].to_narrative(), executed_actions
 
-
-    async def generate_plan(self, chat_history: List[ChatMessage]):
-        planning_prompt = self.create_planning_prompt(chat_history)
-        plan = await self.llm.create_chat_completion(
-            planning_prompt,
-            self.get_last_user_message(chat_history)
-        )
-        self.logger.debug(f"Generated plan: {json.dumps(plan, indent=2)}")
-        return plan
-
-    async def should_reassess_plan(self, action_result: Any, chat_history: List[ChatMessage]) -> Tuple[bool, str]:
-        system_message = self.create_reassessment_prompt(action_result, chat_history)
-        user_message = json.dumps(self.action_log[-1]) if self.action_log else "{}"
+    async def generate_initial_goal(self, user_id: str) -> str:
+        goal_prompt = self.create_goal_prompt(self.event_logs[user_id].to_narrative())
+        tool_config = self.llm.get_tool_config("set_goal")
+        goal_response = await self.llm.create_chat_completion(goal_prompt, self.get_last_user_message(user_id), tool_config)
         
-        reassessment_response = await self.llm.create_chat_completion(system_message, user_message)
+        if goal_response and isinstance(goal_response, list) and len(goal_response) > 0:
+            if isinstance(goal_response[0], dict):
+                return goal_response[0].get('goal', '')
+            elif isinstance(goal_response[0], str):
+                return goal_response[0]
         
-        logging.debug(f"Reassessment response: {reassessment_response}")
+        self.logger.warning("Failed to generate a valid goal. Using default.")
+        return "Assist the user with their query"
+
+    async def goal_achieved(self, goal: str, actions: List[Dict], user_id: str) -> bool:
+        goal_check_prompt = self.create_goal_check_prompt(goal, actions, self.event_logs[user_id].to_narrative())
+        tool_config = self.llm.get_tool_config("goal_check")
+        goal_check_response = await self.llm.create_chat_completion(goal_check_prompt, json.dumps(actions), tool_config)
         
-        if reassessment_response and len(reassessment_response) > 0:
-            reassessment_action = reassessment_response[0]
-            if isinstance(reassessment_action, dict) and 'action' in reassessment_action:
-                if reassessment_action['action'] == 'reassessment_decision':
-                    params = reassessment_action.get('params', {})
-                    should_reassess = params.get('should_reassess', False)
-                    reason = params.get('reason', 'No reason provided')
-                    return should_reassess, reason
+        if goal_check_response and isinstance(goal_check_response, list) and len(goal_check_response) > 0:
+            if isinstance(goal_check_response[0], dict):
+                return goal_check_response[0].get('goal_achieved', False)
+            elif isinstance(goal_check_response[0], bool):
+                return goal_check_response[0]
         
-        logging.warning("Unexpected reassessment response format. Defaulting to not reassessing.")
-        return False, "Unexpected response format"
+        return False
 
-    def create_reassessment_prompt(self, action_result: Any, chat_history: List[ChatMessage]) -> str:
-        history_str = "\n".join([f"{msg['sender']}: {msg['content']}" for msg in chat_history[-5:]])
-        context_str = self.create_system_message()
-        action_log_str = json.dumps(self.action_log, indent=2)
+    async def determine_next_action(self, goal: str, actions: List[Dict], user_id: str) -> List[Dict[str, Any]]:
+        action_prompt = self.create_action_prompt(goal, actions, self.event_logs[user_id].to_narrative())
+        tool_config = self.llm.get_tool_config("create_action")
+        action_response = await self.llm.create_chat_completion(action_prompt, self.get_last_user_message(user_id), tool_config)
         
-        return f"""
-        You are an AI assistant tasked with deciding whether to reassess the current plan based on the latest action result.
-        Consider the following context, chat history, action log, and the latest action result.
+        if action_response and isinstance(action_response, list) and len(action_response) > 0:
+            return action_response
+        
+        self.logger.warning("Failed to determine next action. Using default.")
+        return [{"action": "send_message_to_student", "params": {"message": "I'm not sure how to proceed. Can you provide more information?"}}]
 
-        Context:
-        ========
-        {context_str}
-        ========
+    async def execute_action(self, action_data: Dict[str, Any], communication_channel: CommunicationChannel) -> Tuple[bool, Any]:
+        action = self.parse_action(communication_channel, action_data)
+        if action is None:
+            self.logger.warning(f"Unknown action: {action_data}")
+            action = SendMessageToStudent(
+                communication_channel,
+                f"I encountered an error while processing the action: {action_data.get('action')}. Could you please rephrase or provide more details?"
+            )
+        return await action.execute()
 
-        Chat History:
-        ========
-        {history_str}
-        ========
-
-        Action Log:
-        ========
-        {action_log_str}
-        ========
-
-        Latest Action Result:
-        ========
-        {json.dumps(action_result, indent=2)}
-        ========
-
-        Decide whether the current plan should be reassessed based on the latest action result.
-        Use the create_action function to return your decision with the following structure:
-        {{
-            "action": "reassessment_decision",
-            "params": {{
-                "should_reassess": true/false,
-                "reason": "Explanation for the decision"
-            }}
-        }}
-        Only use the create_action function once to provide your decision.
-        """
-
-
-    def parse_action(self, communication_channel: CommunicationChannel, action_data: dict):
+    def parse_action(self, communication_channel: CommunicationChannel, action_data: dict) -> Optional[Action]:
         action_name = action_data.get("action")
         params = action_data.get("params", {})
         
         try:
             if action_name == "send_message_to_student":
                 return SendMessageToStudent(communication_channel=communication_channel, message=params.get("message", ""))
-            elif action_name == "send_message_to_stratos":
-                return SendMessageToStratos(communication_channel=communication_channel, message=params.get("message", ""))
-            elif action_name == "send_message_to_spaceship":
-                # from remote_pdb import RemotePdb; RemotePdb('0.0.0.0', 5678).set_trace()
-                return SendMessageToSpaceship(message=params.get("message", ""))
-            # elif action_name == "update_whiteboard":
-            #     return UpdateWhiteboard(, contents=params.get("contents", ""))
             elif action_name == "query_file_system":
-                return QueryFileSystem(command=params.get("command", ""))
+                return QueryFileSystem(command=params.get("command", ""), agent_id=self.agent_id)
             elif action_name == "view_file_contents":
-                return ViewFileContents(file_path=params.get("file_path", ""))
+                return ViewFileContents(file_path=params.get("file_path", ""), agent_id=self.agent_id)
             elif action_name == "edit_file_contents":
-                return EditFileContents(file_path=params.get("file_path", ""), content=params.get("content", ""))
+                return EditFileContents(file_path=params.get("file_path", ""), content=params.get("content", ""), agent_id=self.agent_id)
             elif action_name == "create_new_file":
-                return CreateNewFile(file_path=params.get("file_path", ""))
+                return CreateNewFile(file_path=params.get("file_path", ""), agent_id=self.agent_id)
             elif action_name == "run_python_file":
-                return RunPythonFile(file_path=params.get("file_path", ""))
+                return RunPythonFile(file_path=params.get("file_path", ""), agent_id=self.agent_id)
+            elif action_name == "send_message_to_spaceship":
+                return SendMessageToSpaceship(message=params.get("message", ""))
             else:
                 self.logger.warning(f"Unknown action: {action_name}")
-                return SendMessageToStudent(communication_channel, f"I'm sorry, but I don't know how to perform the action '{action_name}'. Could you please try a different request?")
+                return None
         except KeyError as e:
             self.logger.error(f"Missing required parameter for action {action_name}: {str(e)}")
-            return SendMessageToStudent(communication_channel, f"I'm sorry, but I'm missing some information to perform the action '{action_name}'. Could you please provide more details?")
-        
+            return None
 
-
-    def create_planning_prompt(self, chat_history: List[ChatMessage]) -> str:
-        history_str = "\n".join([f"{msg['sender']}: {msg['content']}" for msg in chat_history[-5:]])
-        context_str = self.create_system_message()
-        action_log_str = json.dumps(self.action_log, indent=2)
-        
-        return f"""
-        You are an AI assistant tasked with creating a structured plan to respond to user queries.
-        Given the following context, chat history, and action log, create a plan of actions to address the user's latest message.
-        You are only allowed to use the following actions:
-        1. send_message_to_student: Send a message to the student
-        2. update_whiteboard: Update the whiteboard with new information
-        3. query_file_system: Execute a file system query
-        4. send_message_to_stratos: Send a message to the STRATOS system
-
-        Context:
-        ========
-        {context_str}
-        ========
-
-        Chat History:
-        ========
-        {history_str}
-        ========
-
-        Action Log:
-        ========
-        {action_log_str}
-        ========
-
-        Create a plan using the provided create_action function. You should return a list of actions, where each action has an 'action' field specifying the type of action, and a 'params' field containing the necessary parameters for that action.
-        Consider the outcomes of previous actions when creating your plan.
-        """
-
-
-    def create_reassessment_prompt(self, action_result: Any, chat_history: List[ChatMessage]) -> str:
-        history_str = "\n".join([f"{msg['sender']}: {msg['content']}" for msg in chat_history[-5:]])
-        context_str = self.create_system_message()
-        action_log_str = json.dumps(self.action_log, indent=2)
-        
-        return f"""
-        You are an AI assistant tasked with deciding whether to reassess the current plan based on the latest action result.
-        Consider the following context, chat history, action log, and the latest action result.
-
-        Context:
-        ========
-        {context_str}
-        ========
-
-        Chat History:
-        ========
-        {history_str}
-        ========
-
-        Action Log:
-        ========
-        {action_log_str}
-        ========
-
-        Latest Action Result:
-        ========
-        {json.dumps(action_result, indent=2)}
-        ========
-
-        Decide whether the current plan should be reassessed based on the latest action result.
-        Use the create_action function to return your decision with the following structure:
-        {{
-            "action": "reassessment_decision",
-            "params": {{
-                "should_reassess": true/false,
-                "reason": "Explanation for the decision"
-            }}
-        }}
-        Only use the create_action function once to provide your decision.
-        """
-
-
-    def get_last_user_message(self, chat_history: List[ChatMessage]) -> str:
-        for message in reversed(chat_history):
-            if message['sender'] == 'user':
-                return message['content']
+    def get_last_user_message(self, user_id: str) -> str:
+        for event in reversed(self.event_logs[user_id].events):
+            if event.type == "user_message":
+                return event.data.get('content', '')
         return ""
-    
-    def create_system_message(self):
-        current_time_utc = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
-        # from remote_pdb import RemotePdb; RemotePdb('0.0.0.0', 5678).set_trace()
+
+    def create_goal_prompt(self, narrative: str) -> str:
+        context = self.create_system_message()
         return f"""
-                {self.prompts.situational_context}
-                {self.prompts.self_identity}
-                {self.prompts.personality}
-                {self.prompts.knowledge.replace("[current_time_utc]", current_time_utc)}
-                {self.prompts.actions}
+        {context}
+
+        You are an AI assistant tasked with setting a goal to address the user's latest message.
+        Given the following narrative of events, determine an appropriate goal.
+
+        Narrative:
+        ========
+        {narrative}
+        ========
+
+        Determine a goal that addresses the user's needs based on the context and narrative.
         """
+
+    def create_action_prompt(self, goal: str, actions: List[Dict], narrative: str) -> str:
+        context = self.create_system_message()
+        action_log_str = json.dumps(actions, indent=2)
+        return f"""
+        {context}
+
+        You are an AI assistant tasked with determining the next action to take towards achieving a goal.
+        Given the following context, goal, action history, and narrative of events, decide on the next action.
+
+        Goal:
+        ========
+        {goal}
+        ========
+
+        Action History:
+        ========
+        {action_log_str}
+        ========
+
+        Narrative:
+        ========
+        {narrative}
+        ========
+
+        Determine the next action to take to achieve the goal. Remember to communicate any retrieved information or completed tasks to the user.
+        """
+
+    def create_goal_check_prompt(self, goal: str, actions: List[Dict], narrative: str) -> str:
+        context = self.create_system_message()
+        action_log_str = json.dumps(actions, indent=2)
+        return f"""
+        {context}
+
+        You are an AI assistant tasked with determining if a goal has been achieved.
+        Given the following context, goal, action history, and narrative of events, decide if the goal has been achieved.
+
+        Goal:
+        ========
+        {goal}
+        ========
+
+        Action History:
+        ========
+        {action_log_str}
+        ========
+
+        Narrative:
+        ========
+        {narrative}
+        ========
+
+        Determine whether the goal has been achieved based on the actions taken and the current state of the conversation.
+        Remember that the goal is not considered fully achieved until the results or completion of tasks have been communicated to the user.
+        """
+
+    def create_system_message(self) -> str:
+        return f"""
+        {self.prompts.situational_context}
+        {self.prompts.self_identity}
+        {self.prompts.personality}
+        {self.prompts.knowledge}
+        {self.prompts.actions}
+        
+        IMPORTANT: After any action that retrieves information or performs a task, you MUST include a send_message_to_student action to communicate the results or acknowledge the completion of the task to the user. The user cannot see the results of your actions directly and relies on your messages to stay informed.
+        """
+
+    def get_event_log(self, user_id: str) -> EventLog:
+        return self.event_logs.get(user_id, EventLog())
+
+    def clear_event_log(self, user_id: str) -> None:
+        if user_id in self.event_logs:
+            self.event_logs[user_id] = EventLog()
+
+    # async def handle_error(self, error: Exception, user_id: str, communication_channel: CommunicationChannel) -> None:
+    #     error_message = f"An error occurred: {str(error)}"
+    #     self.logger.error(error_message)
+    #     await communication_channel.send_message(error_message)
+    #     self.clear_event_log(user_id)
+
+    async def shutdown(self) -> None:
+        self.logger.info("Shutting down ArcaneArchitecture")
+        # Add any cleanup code here, such as saving state or closing connections

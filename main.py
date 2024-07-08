@@ -14,28 +14,21 @@ async def arcane_base_main(name, descriptor, model, port):
 
     anthropic_api_key = get_environment_variable('ANT_API_KEY')
     llm = LLM(logger)
-    weaviate_url = get_environment_variable('WEAVIATE_URL')
-    # memory_manager = WeaviateMemoryManager(weaviate_url, anthropic_api_key)
-    # serpapi_key = get_environment_variable('SERPAPI_KEY')
-    arc = ArcaneSystem(name, llm, model, logger) #, memory_manager)
-
-    # giphy = GiphyFinder(get_environment_variable('GIPHY_API_KEY'))
-    # media_generators = [
-    #     {"keyword": "IMAGE", "generator_function": llm.create_image},
-    #     {"keyword": "GIF", "generator_function": giphy.get_giphy_url}
-    # ]
+    arc = ArcaneSystem(name, llm, model, logger, port)
 
     await arc.start()
 
     fastapi_backend = FastApiApp(arc, llm, port)
-    fastapi_task = asyncio.create_task(fastapi_backend.run())
     logger.info(f"Starting backend for {name}")
 
     try:
-        await fastapi_task
+        await fastapi_backend.run()
     except asyncio.CancelledError:
         logger.info(f"{name}'s fastapi backend shutting down...")
-        await fastapi_backend.shutdown()
+    finally:
+        if fastapi_backend:
+            await fastapi_backend.shutdown()
+        logger.info(f"{name}'s fastapi backend has been shut down.")
 
 # Example of usage
 if __name__ == "__main__":

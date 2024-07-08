@@ -1,5 +1,6 @@
 import traceback
 import uvicorn
+from uvicorn import Config, Server
 from fastapi import FastAPI, Request, WebSocket, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -13,6 +14,7 @@ import signal
 import asyncio
 import uuid
 import json
+import logging
 
 class FastApiApp:
     def __init__(self, arcane_system: ArcaneSystem, llm: LLM, port: int):
@@ -37,7 +39,9 @@ class FastApiApp:
 
         self.llm = llm
         self.port = port
+
         self.server = None
+        self.should_exit = asyncio.Event()
 
     async def custom_exception_handler(self, request: Request, exc: Exception):
         traceback_str = traceback.format_exc()
@@ -76,16 +80,18 @@ class FastApiApp:
         async def chat(request: Request):
             data = await request.json()
             message = data.get('message', '')
-            user_id = data.get('user_id', str(uuid.uuid4()))  # Generate a new user_id if not provided
+            user_id = data.get('user_id', str(uuid.uuid4()))
             messages: [ChatMessage] = [create_chat_message("api-user", message)]
             communication_channel = WebCommunicationChannel(messages, self.chatConnectionManager, self.arcane_system, user_id)
 
             try:
-                await self.arcane_system.process_incoming_user_message(communication_channel, user_id)
+                narrative, executed_actions = await self.arcane_system.process_incoming_user_message(communication_channel, user_id)
+                # Log the narrative (for debugging or admin purposes)
+                logging.debug(f"Narrative for user {user_id}: {narrative}")
                 return JSONResponse(content={"success": True, "user_id": user_id}, status_code=200)
             except Exception as e:
                 traceback_str = traceback.format_exc()
-                print(traceback_str)
+                logging.error(traceback_str)
                 await self.send_message_to_frontend(user_id, f"An error occurred: {str(e)}")
                 return JSONResponse(content={"success": False, "error": str(e)}, status_code=500)
 
@@ -99,12 +105,15 @@ class FastApiApp:
             communication_channel = WebCommunicationChannel(messages, self.chatConnectionManager, self.arcane_system, user_id)
 
             try:
-                await self.arcane_system.process_incoming_user_message(communication_channel, user_id)
-                return f"Message sent to {self.arcane_system.name} for user {user_id}"
+                narrative, executed_actions = await self.arcane_system.process_incoming_user_message(communication_channel, user_id)
+                # Log the narrative (for debugging or admin purposes)
+                self.logger.debug(f"Narrative for user {user_id}: {narrative}")
+                return f"Message processed by {self.arcane_system.name} for user {user_id}"
             except Exception as e:
                 traceback_str = traceback.format_exc()
-                print(traceback_str)
+                self.logger.error(traceback_str)
                 return JSONResponse(content={"error": str(e), "traceback": traceback_str}, status_code=400)
+
 
         @app.get("/llmlog/")
         async def get_llm_completions():
@@ -118,14 +127,15 @@ class FastApiApp:
     async def process_websocket_message(self, user_id: str, message: str):
         messages: [ChatMessage] = [create_chat_message("api-user", message)]
         communication_channel = WebCommunicationChannel(messages, self.chatConnectionManager, self.arcane_system, user_id)
-        response, actions = await self.arcane_system.process_incoming_user_message(communication_channel, user_id)
+        narrative, executed_actions = await self.arcane_system.process_incoming_user_message(communication_channel, user_id)
         
-        # Process the response
-        processed_response = self.process_response(response)
+        # Log the narrative (for debugging or admin purposes)
+        logging.debug(f"Narrative for user {user_id}: {narrative}")
+
         
-        # Send the processed response and actions
-        await self.chatConnectionManager.send_message(user_id, create_chat_message(self.arcane_system.name, processed_response))
-        await self.chatConnectionManager.send_actions(user_id, actions)
+        # # Send the processed response and actions
+        # await self.chatConnectionManager.send_message(user_id, create_chat_message(self.arcane_system.name, processed_response))
+        # await self.chatConnectionManager.send_actions(user_id, actions)
 
     def process_response(self, response):
         if isinstance(response, str):
@@ -144,19 +154,13 @@ class FastApiApp:
         self.llm.add_completion_listener(self.llm_completion_listener)
 
     async def run(self):
-        self.setup_listeners()
-        config = uvicorn.Config(app=self.app, host="localhost", port=self.port, log_level="error")
-        self.server = uvicorn.Server(config)
-
-        loop = asyncio.get_event_loop()
-        for sig in (signal.SIGINT, signal.SIGTERM):
-            loop.add_signal_handler(sig, self.shutdown)
-
-        print(f"Running server on port {self.port}...")
+        config = Config(app=self.app, host="localhost", port=self.port, log_level="error")
+        self.server = Server(config=config)
+        
+        self.should_exit.clear()
         await self.server.serve()
-        print(f"Server on port {self.port} has shut down.")
 
-    def shutdown(self):
-        print(f"Shutting down server on port {self.port}...")
+    async def shutdown(self):
         if self.server:
             self.server.should_exit = True
+            await self.server.shutdown()

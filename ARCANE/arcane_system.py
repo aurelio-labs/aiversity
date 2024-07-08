@@ -1,63 +1,49 @@
-from ARCANE.action_layer import ActionLayer
+import logging
+from typing import Dict, List, Tuple, Any
 from llm.LLM import LLM
-from typing import Dict, List
-from ARCANE.types import ChatMessage, create_chat_message
-from ARCANE.arcane_architecture import ArcaneArchitecture
-import json
+from ARCANE.arcane_architecture import ArcaneArchitecture, Event, EventLog
+from channels.communication_channel import CommunicationChannel
 
 class ArcaneSystem:
-    def __init__(self, name, llm: LLM, model: str, logger):
+    def __init__(self, name: str, llm: LLM, model: str, logger: logging.Logger, port: int):
         self.name = name
         self.llm = llm
         self.model = model
         self.logger = logger
+        self.agent_id = f"{name}-{port}"
+        self.arcane_architecture = ArcaneArchitecture(self.llm, self.logger, self.agent_id)
 
-        self.action_agent: ActionLayer = ActionLayer(
-            name,
-            llm,
-            model,
-            logger
-        )
+    async def process_incoming_user_message(self, communication_channel: CommunicationChannel, user_id: str) -> Tuple[str, List[Dict[str, Any]]]:
+        try:
+            message = await communication_channel.get_last_message()
+            await self.arcane_architecture.process_message(user_id, message, communication_channel)
+            
+            # Retrieve the updated event log
+            event_log = self.arcane_architecture.get_event_log(user_id)
+            
+            # Extract the narrative and actions from the event log
+            narrative = event_log.to_narrative()
+            actions = [event.data for event in event_log.events if event.type == "agent_action"]
+            
+            return narrative, actions
+        except Exception as e:
+            await self.arcane_architecture.handle_error(e, user_id, communication_channel)
+            return f"An error occurred: {str(e)}", []
 
-        # New: Dictionary to store chat histories
-        self.chat_histories: Dict[str, List[ChatMessage]] = {}
+    async def start(self) -> None:
+        self.logger.info(f"Starting {self.name} ArcaneSystem")
+        # Any additional initialization code can go here
 
-        self.arcane_architecture = ArcaneArchitecture(self.llm, self.logger)
+    async def shutdown(self) -> None:
+        self.logger.info(f"Shutting down {self.name} ArcaneSystem")
+        await self.arcane_architecture.shutdown()
+        # Add any additional cleanup code here
 
-    async def process_incoming_user_message(self, communication_channel, user_id: str):
-        if user_id not in self.chat_histories:
-            self.chat_histories[user_id] = []
+    def get_event_log(self, user_id: str) -> EventLog:
+        return self.arcane_architecture.get_event_log(user_id)
 
-        new_message = create_chat_message("user", await communication_channel.get_last_message())
-        self.chat_histories[user_id].append(new_message)
+    def clear_event_log(self, user_id: str) -> None:
+        self.arcane_architecture.clear_event_log(user_id)
 
-        self.prune_chat_history(user_id)
-
-        plan, actions = await self.arcane_architecture.process_message(user_id, self.chat_histories[user_id], communication_channel)
-
-        # Send actions to the frontend
-        await communication_channel.send_actions(actions)
-
-        return plan, actions
-
-    def process_response(self, response):
-        if isinstance(response, str):
-            try:
-                actions = json.loads(response)
-                if isinstance(actions, list):
-                    for action in actions:
-                        if action.get('action') == 'send_message_to_student':
-                            return action.get('message', '')
-                return response  # Return original if not expected format
-            except json.JSONDecodeError:
-                return response  # Return original if not valid JSON
-        return str(response)  # Convert to string if not already
-
-    def prune_chat_history(self, user_id: str, max_messages: int = 10):
-        """Keep only the last `max_messages` in the chat history."""
-        if len(self.chat_histories[user_id]) > max_messages:
-            self.chat_histories[user_id] = self.chat_histories[user_id][-max_messages:]
-
-    async def start(self):
-        # Any initialization code can go here
-        pass
+    async def handle_error(self, error: Exception, user_id: str, communication_channel: CommunicationChannel) -> None:
+        await self.arcane_architecture.handle_error(error, user_id, communication_channel)
