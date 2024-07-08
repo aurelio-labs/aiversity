@@ -281,37 +281,46 @@ class SharedWorkspace(QWidget):
     def triage_agent_response(self, response_message):
         self.processing_animation_timer.stop()
 
-        cursor = self.chat_history.textCursor()
-        cursor.movePosition(cursor.End)
-        cursor.movePosition(cursor.StartOfBlock, cursor.KeepAnchor)
-        selected_text = cursor.selectedText()
-        
-        if "Processing" in selected_text:
-            cursor.removeSelectedText()
-        else:
-            cursor.movePosition(cursor.End)
-
         try:
-            # Check if response_message is already a dictionary
-            if isinstance(response_message, dict):
-                response_data = response_message
-            else:
-                response_data = json.loads(response_message)
+            response_data = json.loads(response_message)
+            message_type = response_data.get("type", "agent_message")
             
-            sender = response_data.get("sender", "Triage Agent")
-            content = response_data.get("content", "")
-            timestamp = response_data.get("time_utc", "")
-
-            utc_time = QDateTime.fromString(timestamp, Qt.ISODate)
-            local_time = utc_time.toLocalTime()
-            formatted_time = local_time.toString("yyyy-MM-dd HH:mm:ss")
-
-            self.chat_history.append(f"<span style='color: #2ECC40;'>[{formatted_time}] {sender}:</span> {content}")
-        except (json.JSONDecodeError, AttributeError):
-            timestamp = QDateTime.currentDateTime().toString("yyyy-MM-dd HH:mm:ss")
-            self.chat_history.append(f"<span style='color: #2ECC40;'>[{timestamp}] Triage Agent:</span> {response_message}")
+            if message_type == "execution_update":
+                self.display_execution_update(response_data["data"])
+            elif message_type == "agent_message":
+                self.display_agent_message(response_data)
+            else:
+                self.display_unknown_message(response_data)
+        except json.JSONDecodeError:
+            # Handle plain text messages
+            self.display_plain_text_message(response_message)
 
         self.chat_history.ensureCursorVisible()
+
+    def display_execution_update(self, update_message):
+        formatted_message = f"<span style='color: #808080; margin-left: 20px;'>{update_message}</span>"
+        self.chat_history.append(formatted_message)
+
+    def display_agent_message(self, message_data):
+        sender = message_data.get("sender", "Triage Agent")
+        content = message_data.get("content", "")
+        timestamp = message_data.get("time_utc", "")
+
+        utc_time = QDateTime.fromString(timestamp, Qt.ISODate)
+        local_time = utc_time.toLocalTime()
+        formatted_time = local_time.toString("yyyy-MM-dd HH:mm:ss")
+
+        formatted_message = f"<span style='color: #2ECC40;'>[{formatted_time}] {sender}:</span> {content}"
+        self.chat_history.append(formatted_message)
+
+    def display_unknown_message(self, message_data):
+        formatted_message = f"<span style='color: #FFA500;'>Unknown message type:</span> {json.dumps(message_data)}"
+        self.chat_history.append(formatted_message)
+
+    def display_plain_text_message(self, message):
+        timestamp = QDateTime.currentDateTime().toString("yyyy-MM-dd HH:mm:ss")
+        formatted_message = f"<span style='color: #2ECC40;'>[{timestamp}] Triage Agent:</span> {message}"
+        self.chat_history.append(formatted_message)
 
     async def receive_messages(self):
         url = f"ws://localhost:5000/ws-chat/{self.user_id}"
@@ -320,9 +329,11 @@ class SharedWorkspace(QWidget):
                 while True:
                     message = await websocket.receive()
                     if message.type == aiohttp.WSMsgType.TEXT:
+                        print(f"Received message: {message.data}")  # Debug print
                         data = json.loads(message.data)
-                        if 'type' in data and data['type'] == 'actions':
-                            self.actionReceived.emit(data['data'])
+                        if 'type' in data and data['type'] == 'execution_update':
+                            print(f"Execution update received: {data['data']}")  # Debug print
+                            self.triage_agent_response(json.dumps(data))
                         elif 'content' in data:
                             self.triage_agent_response(data['content'])
                     elif message.type == aiohttp.WSMsgType.CLOSED:

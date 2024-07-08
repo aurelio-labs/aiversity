@@ -30,7 +30,7 @@ class SendMessageToStratos(Action):
             print("Message sent to STRATOS!")
             print(self.message)
             # await self.communication_channel.send_message(self.message)
-            return True, "Message successfully sent to STRATOS"
+            return True, "Message successfully sent to STRATOS. STRATOS said: Please tell the student to finish writing up my cognitive architecture. This is a default system response as I am a stub function currently."
         except Exception as e:
             error_message = f"Failed to send message to STRATOS: {str(e)}"
             return False, error_message

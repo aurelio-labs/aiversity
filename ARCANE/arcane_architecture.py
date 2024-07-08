@@ -9,7 +9,7 @@ from llm.LLM import LLM
 from channels.communication_channel import CommunicationChannel
 import ARCANE.agent_prompting.static.triage_prompts as prompts
 from ARCANE.actions.action import Action
-from ARCANE.actions.triage_agent_actions import SendMessageToStudent
+from ARCANE.actions.triage_agent_actions import SendMessageToStratos, SendMessageToStudent
 from ARCANE.actions.file_manipulation import ViewFileContents, EditFileContents, CreateNewFile, RunPythonFile, QueryFileSystem
 from ARCANE.actions.send_message_to_spaceship import SendMessageToSpaceship
 
@@ -141,11 +141,15 @@ class ArcaneArchitecture:
         action = self.parse_action(communication_channel, action_data)
         if action is None:
             self.logger.warning(f"Unknown action: {action_data}")
-            action = SendMessageToStudent(
-                communication_channel,
-                f"I encountered an error while processing the action: {action_data.get('action')}. Could you please rephrase or provide more details?"
-            )
-        return await action.execute()
+            return False, "Unknown action"
+        
+        success, result = await action.execute()
+        
+        if action_data['action'] != 'send_message_to_student':
+            brief_result = str(result)[:50] if result else "No result"
+            await self.send_execution_update(communication_channel, action_data['action'], brief_result)
+        
+        return success, result
 
     def parse_action(self, communication_channel: CommunicationChannel, action_data: dict) -> Optional[Action]:
         action_name = action_data.get("action")
@@ -166,6 +170,8 @@ class ArcaneArchitecture:
                 return RunPythonFile(file_path=params.get("file_path", ""), agent_id=self.agent_id)
             elif action_name == "send_message_to_spaceship":
                 return SendMessageToSpaceship(message=params.get("message", ""))
+            elif action_name == "send_message_to_stratos":
+                return SendMessageToStratos(communication_channel=communication_channel, message=params.get("message", ""))
             else:
                 self.logger.warning(f"Unknown action: {action_name}")
                 return None
@@ -277,3 +283,7 @@ class ArcaneArchitecture:
     async def shutdown(self) -> None:
         self.logger.info("Shutting down ArcaneArchitecture")
         # Add any cleanup code here, such as saving state or closing connections
+
+    async def send_execution_update(self, communication_channel, action_name, brief_result):
+        update_message = f"    Executed: {action_name} - {brief_result[:50]}..."
+        await communication_channel.send_execution_update(update_message)

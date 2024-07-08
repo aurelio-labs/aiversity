@@ -26,3 +26,10 @@ class WebSocketConnectionManager:
     async def send_actions(self, user_id: str, actions):
         if user_id in self.active_connections:
             await self.active_connections[user_id].send_text(json.dumps({"type": "actions", "data": actions}))
+
+    async def send_execution_update(self, user_id: str, update_message: str):
+        if user_id in self.active_connections:
+            await self.active_connections[user_id].send_text(json.dumps({
+                "type": "execution_update",
+                "data": update_message
+            }))

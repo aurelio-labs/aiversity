@@ -32,3 +32,6 @@ class WebCommunicationChannel(CommunicationChannel):
 
     def describe(self):
         return f"Web (User ID: {self.user_id})"
+    
+    async def send_execution_update(self, update_message: str):
+        await self.web_socket.send_execution_update(self.user_id, update_message)
