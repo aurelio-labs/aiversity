@@ -1,7 +1,8 @@
 from ARCANE.types import ChatMessage, create_chat_message
 from channels.communication_channel import CommunicationChannel
 from channels.web.web_socket_connection_manager import WebSocketConnectionManager
-
+import asyncio
+import requests
 
 class WebCommunicationChannel(CommunicationChannel):
     def __init__(self, messages: [ChatMessage],
@@ -15,7 +16,20 @@ class WebCommunicationChannel(CommunicationChannel):
         print(f"WebCommunicationChannel.send_message for user {self.user_id}: {text}")
         chat_message = create_chat_message(self.arcane_system.name, text)
         await self.web_socket.send_message(self.user_id, chat_message)
+        await self.send_text_to_pi(text)
         print("WebCommunicationChannel sent message!")
+
+    @staticmethod
+    async def send_text_to_pi(text):
+        try:
+            response = await asyncio.get_running_loop().run_in_executor(
+                None, 
+                lambda: requests.post("http://localhost:5050/send-text/", json={"text": text})
+            )
+            response.raise_for_status()
+            print(f"Text sent to TTS service successfully: {text}")
+        except requests.exceptions.RequestException as e:
+            print(f"Error sending text to TTS service: {e}")
 
     async def get_message_history(self, message_count) -> [ChatMessage]:
         return self.messages[-message_count:]
