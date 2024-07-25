@@ -4,6 +4,7 @@ import asyncio
 import subprocess
 from typing import Tuple, Optional
 import os
+import aiohttp
 
 class ViewFileContents(Action):
     def __init__(self, file_path: str, agent_id: str):
@@ -165,3 +166,32 @@ class UpdateWhiteboard(Action):
 
     def __str__(self):
         return "Update whiteboard"
+    
+
+class SendNIACLMessage(Action):
+    def __init__(self, receiver: str, message: str, sender: str, agent_config: dict):
+        self.receiver = receiver
+        self.message = message
+        self.sender = sender
+        self.agent_config = agent_config
+
+    async def execute(self) -> Tuple[bool, Optional[str]]:
+        try:
+            # Check if the receiver is in the allowed communications list
+            if self.receiver not in self.agent_config['allowed_communications']:
+                return False, f"Communication with {self.receiver} is not allowed."
+
+            # Get the receiver's port from configuration
+            receiver_port = self.agent_config.get('port_mapping', {}).get(self.receiver)
+            if not receiver_port:
+                return False, f"Port for {self.receiver} not found in configuration."
+
+            url = f"http://localhost:{receiver_port}/agent-message/"
+            async with aiohttp.ClientSession() as session:
+                async with session.post(url, json={"message": self.message, "sender": self.sender}) as response:
+                    if response.status == 200:
+                        return True, f"Message sent asynchronously to {self.receiver}. Don't wait for a response, the agent is processing this."
+                    else:
+                        return False, f"Failed to send message to {self.receiver}. Status: {response.status}"
+        except Exception as e:
+            return False, f"Error sending NIACL message: {str(e)}"

@@ -1,17 +1,21 @@
 import logging
 from typing import Dict, List, Tuple, Any
+from aiversity.ARCANE.agent_prompting.agent_prompts import generate_agent_prompt
 from llm.LLM import LLM
 from ARCANE.arcane_architecture import ArcaneArchitecture, Event, EventLog
 from channels.communication_channel import CommunicationChannel
 
 class ArcaneSystem:
-    def __init__(self, name: str, llm: LLM, model: str, logger: logging.Logger, port: int):
+    def __init__(self, name: str, llm: LLM, model: str, logger: logging.Logger, port: int, agent_config: dict):
         self.name = name
         self.llm = llm
         self.model = model
         self.logger = logger
         self.agent_id = f"{name}-{port}"
-        self.arcane_architecture = ArcaneArchitecture(self.llm, self.logger, self.agent_id)
+        self.agent_prompt = generate_agent_prompt(agent_config)
+        self.arcane_architecture = ArcaneArchitecture(self.llm, self.logger, self.agent_id, self.agent_prompt)
+        self.agent_config = agent_config
+        self.allowed_communications = []
 
     async def process_incoming_user_message(self, communication_channel: CommunicationChannel, user_id: str) -> Tuple[str, List[Dict[str, Any]]]:
         try:

@@ -51,10 +51,11 @@ class EventLog:
         return "\n".join(narrative)
 
 class ArcaneArchitecture:
-    def __init__(self, llm: LLM, logger: logging.Logger, agent_id: str):
+    def __init__(self, llm: LLM, logger: logging.Logger, agent_id: str, agent_prompt: str):
         self.llm = llm
         self.logger = logger
         self.agent_id = agent_id
+        self.agent_prompt = agent_prompt
         self.event_logs: Dict[str, EventLog] = {}
         self.prompts = prompts
         importlib.reload(prompts)
@@ -258,13 +259,9 @@ class ArcaneArchitecture:
 
     def create_system_message(self) -> str:
         return f"""
-        {self.prompts.situational_context}
-        {self.prompts.self_identity}
-        {self.prompts.personality}
-        {self.prompts.knowledge}
-        {self.prompts.actions}
+        {self.agent_prompt}
         
-        IMPORTANT: After any action that retrieves information or performs a task, you MUST include a send_message_to_student action to communicate the results or acknowledge the completion of the task to the user. The user cannot see the results of your actions directly and relies on your messages to stay informed.
+        IMPORTANT: After any action that retrieves information or performs a task, you MUST include a send_message_to_student action (for user messages) or other appropriate action.
         """
 
     def get_event_log(self, user_id: str) -> EventLog:

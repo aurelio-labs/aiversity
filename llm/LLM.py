@@ -16,9 +16,9 @@ class ChatCompletion(TypedDict):
     conversation: List[LLMMessage]
 
 class LLM:
-    def __init__(self, logging):
-        self.api_key = get_environment_variable('ANT_API_KEY')
-        self.model = get_environment_variable('CLAUDE_DEFAULT_MODEL')
+    def __init__(self, logging, api_key, model):
+        self.api_key = api_key
+        self.model = model
         self.client = Anthropic(api_key=self.api_key)
         self.executor = ThreadPoolExecutor()
         self.completion_log: List[ChatCompletion] = []
