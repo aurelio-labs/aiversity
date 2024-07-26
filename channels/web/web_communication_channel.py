@@ -16,7 +16,7 @@ class WebCommunicationChannel(CommunicationChannel):
         print(f"WebCommunicationChannel.send_message for user {self.user_id}: {text}")
         chat_message = create_chat_message(self.arcane_system.name, text)
         await self.web_socket.send_message(self.user_id, chat_message)
-        await self.send_text_to_pi(text)
+        # await self.send_text_to_pi(text)
         print("WebCommunicationChannel sent message!")
 
     @staticmethod

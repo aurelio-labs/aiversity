@@ -17,7 +17,13 @@ class WebSocketConnectionManager:
 
     async def send_message(self, user_id: str, message):
         if user_id in self.active_connections:
-            await self.active_connections[user_id].send_text(json.dumps(message))
+            try:
+                await self.active_connections[user_id].send_text(json.dumps(message))
+                print(f"Sent WebSocket message to user {user_id}: {json.dumps(message)[:100]}...")  # Log sent messages
+            except Exception as e:
+                print(f"Error sending WebSocket message to user {user_id}: {str(e)}")
+        else:
+            print(f"No active WebSocket connection for user {user_id}")
 
     async def broadcast(self, message):
         for websocket in self.active_connections.values():

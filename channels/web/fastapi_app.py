@@ -1,4 +1,5 @@
 import traceback
+from channels.web.agent_communication_channel import AgentCommunicationChannel
 import uvicorn
 from uvicorn import Config, Server
 from fastapi import FastAPI, Request, WebSocket, HTTPException
@@ -94,6 +95,23 @@ class FastApiApp:
                 logging.error(traceback_str)
                 await self.send_message_to_frontend(user_id, f"An error occurred: {str(e)}")
                 return JSONResponse(content={"success": False, "error": str(e)}, status_code=500)
+            
+        @app.post("/agent-message/")
+        async def agent_message(request: Request):
+            data = await request.json()
+            message = data.get('message', '')
+            sender = data.get('sender', '')
+            
+            # No need to generate an interaction_id
+            await self.arcane_system.log_agent_message(sender, message)
+            
+            try:
+                narrative, executed_actions = await self.arcane_system.process_incoming_agent_message(sender, message)
+                return JSONResponse(content={"success": True, "sender": sender}, status_code=200)
+            except Exception as e:
+                return JSONResponse(content={"success": False, "error": str(e)}, status_code=500)
+
+
 
         @app.get("/chat/")
         async def chat_get(message: str, user_id: str = None):

@@ -7,11 +7,12 @@ import importlib
 import json
 from llm.LLM import LLM
 from channels.communication_channel import CommunicationChannel
-import ARCANE.agent_prompting.static.triage_prompts as prompts
+import ARCANE.agent_prompting.agent_prompts as prompts
 from ARCANE.actions.action import Action
 from ARCANE.actions.triage_agent_actions import SendMessageToStratos, SendMessageToStudent
 from ARCANE.actions.file_manipulation import ViewFileContents, EditFileContents, CreateNewFile, RunPythonFile, QueryFileSystem
 from ARCANE.actions.send_message_to_spaceship import SendMessageToSpaceship
+from ARCANE.actions.file_manipulation import SendNIACLMessage
 
 class Event:
     def __init__(self, event_type: str, data: Dict[str, Any], timestamp: Optional[datetime] = None):
@@ -28,12 +29,13 @@ class Event:
             "timestamp": self.timestamp.isoformat()
         }
 
-class EventLog:
+class GlobalEventLog:
     def __init__(self):
         self.events: List[Event] = []
 
     def add_event(self, event: Event):
         self.events.append(event)
+        print(f"Added event: {event.type} - {event.data}")
 
     def get_recent_events(self, n: int) -> List[Event]:
         return sorted(self.events, key=lambda e: e.timestamp, reverse=True)[:n]
@@ -43,6 +45,9 @@ class EventLog:
         for event in sorted(self.events, key=lambda e: e.timestamp):
             if event.type == "user_message":
                 narrative.append(f"[{event.timestamp}] User: {event.data['content']}")
+            elif event.type == "agent_message":
+                sender = event.data.get('sender', 'Unknown Agent')
+                narrative.append(f"[{event.timestamp}] Agent {sender}: {event.data['content']}")
             elif event.type == "agent_action":
                 action_data = json.dumps(event.data, indent=2)
                 narrative.append(f"[{event.timestamp}] Agent action:\n{action_data}")
@@ -51,44 +56,107 @@ class EventLog:
         return "\n".join(narrative)
 
 class ArcaneArchitecture:
-    def __init__(self, llm: LLM, logger: logging.Logger, agent_id: str, agent_prompt: str):
+    def __init__(self, llm: LLM, logger: logging.Logger, agent_id: str, agent_prompt: str, agent_config: dict):
         self.llm = llm
         self.logger = logger
         self.agent_id = agent_id
         self.agent_prompt = agent_prompt
-        self.event_logs: Dict[str, EventLog] = {}
+        self.global_event_log = GlobalEventLog()
         self.prompts = prompts
+        self.agent_config = agent_config
         importlib.reload(prompts)
 
 
-    #from remote_pdb import RemotePdb; RemotePdb('0.0.0.0', 5678).set_trace()
+    async def send_niacl_message(self, receiver: str, message: str) -> Tuple[bool, str]:
+        action = SendNIACLMessage(receiver, message, self.agent_id, self.agent_config)
+        return await action.execute()
 
-    async def process_message(self, user_id: str, message: str, communication_channel: CommunicationChannel) -> Tuple[str, List[Dict[str, Any]]]:
-        if user_id not in self.event_logs:
-            self.event_logs[user_id] = EventLog()
+    async def generate_initial_goal(self) -> str:
+        narrative = self.global_event_log.to_narrative()
+        last_message = self.get_last_message_from_log()
+        
+        goal_prompt = self.create_goal_prompt(narrative)
+        tool_config = self.llm.get_tool_config("set_goal")
+        goal_response = await self.llm.create_chat_completion(goal_prompt, last_message, tool_config)
+        
+        if goal_response and isinstance(goal_response, list) and len(goal_response) > 0:
+            if isinstance(goal_response[0], dict):
+                return goal_response[0].get('goal', '')
+            elif isinstance(goal_response[0], str):
+                return goal_response[0]
+        
+        self.logger.warning("Failed to generate a valid goal. Using default.")
+        return "Process the message and respond appropriately"
 
-        self.event_logs[user_id].add_event(Event("user_message", {"content": message}))
+    def get_last_message_from_log(self) -> str:
+        for event in reversed(self.global_event_log.events):
+            if event.type in ["user_message", "agent_message"]:
+                return event.data.get('content', '')
+        return ""
 
-        goal = await self.generate_initial_goal(user_id)
-        self.event_logs[user_id].add_event(Event("goal_set", {"goal": goal}))
+    def create_goal_prompt(self, narrative: str) -> str:
+        context = self.create_system_message()
+        return f"""
+        {context}
+
+        I am an AI assistant tasked with setting a goal to address the latest message, which may be from a user or another agent.
+        Given the following narrative of events, I will determine an appropriate goal.
+
+        Narrative:
+        ========
+        {narrative}
+        ========
+
+        I will determine a goal that addresses the needs based on the context and narrative, whether it's from a user or another agent.
+        """
+
+    async def goal_achieved(self, goal: str, actions: List[Dict]) -> bool:
+        goal_check_prompt = self.create_goal_check_prompt(goal, actions, self.global_event_log.to_narrative())
+        tool_config = self.llm.get_tool_config("goal_check")
+        goal_check_response = await self.llm.create_chat_completion(goal_check_prompt, json.dumps(actions), tool_config)
+        
+        if goal_check_response and isinstance(goal_check_response, list) and len(goal_check_response) > 0:
+            if isinstance(goal_check_response[0], dict):
+                achieved = goal_check_response[0].get('goal_achieved', False)
+            elif isinstance(goal_check_response[0], bool):
+                achieved = goal_check_response[0]
+            else:
+                achieved = False
+            
+            print(f"Goal check: {'Achieved' if achieved else 'Not Achieved'}")
+            return achieved
+        
+        return False
+
+    async def process_message(self, sender_id: str, message: str, communication_channel: CommunicationChannel) -> Tuple[str, List[Dict[str, Any]]]:
+        # Determine if the sender is a user or an agent
+        event_type = "user_message" if sender_id.startswith("user_") else "agent_message"
+        event_data = {"content": message, "sender": sender_id}
+        
+        # Add the incoming message to the global event log
+        self.global_event_log.add_event(Event(event_type, event_data))
+
+        # Generate the initial goal
+        goal = await self.generate_initial_goal()
+        self.global_event_log.add_event(Event("goal_set", {"goal": goal}))
 
         executed_actions = []
-        # from remote_pdb import RemotePdb; RemotePdb('0.0.0.0', 5678).set_trace()
-        while not await self.goal_achieved(goal, executed_actions, user_id):
-            narrative = self.event_logs[user_id].to_narrative()
-            next_action = await self.determine_next_action(goal, executed_actions, user_id)
+        max_iterations = 5  # Limit the number of iterations to prevent infinite loops
+
+        for _ in range(max_iterations):
+            if await self.goal_achieved(goal, executed_actions):
+                break
+
+            narrative = self.global_event_log.to_narrative()
+            next_action = await self.determine_next_action(goal, executed_actions)
 
             if next_action and isinstance(next_action, list) and len(next_action) > 0:
-                action_data = next_action[0]  # Take only the first action
-                action_data = action_data['actions'][0]
-                self.event_logs[user_id].add_event(Event("agent_action", action_data))
+                action_data = next_action[0]['actions'][0]
+                self.global_event_log.add_event(Event("agent_action", action_data))
                 
                 try:
                     success, result = await self.execute_action(action_data, communication_channel)
                     executed_actions.append({"action": action_data, "success": success, "result": result})
-                    
-                    # if action_data['action'] == 'send_message_to_student':
-                    #     self.event_logs[user_id].add_event(Event("agent_message", {"content": action_data['params']['message']}))
                 except Exception as e:
                     self.logger.error(f"Error executing action: {str(e)}")
                     executed_actions.append({"action": action_data, "success": False, "error": str(e)})
@@ -98,45 +166,19 @@ class ArcaneArchitecture:
                 await communication_channel.send_message("I'm having trouble determining the next step. Could you please provide more information or clarify your request?")
                 break
 
-        return self.event_logs[user_id].to_narrative(), executed_actions
+        return self.global_event_log.to_narrative(), executed_actions
 
-    async def generate_initial_goal(self, user_id: str) -> str:
-        goal_prompt = self.create_goal_prompt(self.event_logs[user_id].to_narrative())
-        tool_config = self.llm.get_tool_config("set_goal")
-        goal_response = await self.llm.create_chat_completion(goal_prompt, self.get_last_user_message(user_id), tool_config)
-        
-        if goal_response and isinstance(goal_response, list) and len(goal_response) > 0:
-            if isinstance(goal_response[0], dict):
-                return goal_response[0].get('goal', '')
-            elif isinstance(goal_response[0], str):
-                return goal_response[0]
-        
-        self.logger.warning("Failed to generate a valid goal. Using default.")
-        return "Assist the user with their query"
-
-    async def goal_achieved(self, goal: str, actions: List[Dict], user_id: str) -> bool:
-        goal_check_prompt = self.create_goal_check_prompt(goal, actions, self.event_logs[user_id].to_narrative())
-        tool_config = self.llm.get_tool_config("goal_check")
-        goal_check_response = await self.llm.create_chat_completion(goal_check_prompt, json.dumps(actions), tool_config)
-        
-        if goal_check_response and isinstance(goal_check_response, list) and len(goal_check_response) > 0:
-            if isinstance(goal_check_response[0], dict):
-                return goal_check_response[0].get('goal_achieved', False)
-            elif isinstance(goal_check_response[0], bool):
-                return goal_check_response[0]
-        
-        return False
-
-    async def determine_next_action(self, goal: str, actions: List[Dict], user_id: str) -> List[Dict[str, Any]]:
-        action_prompt = self.create_action_prompt(goal, actions, self.event_logs[user_id].to_narrative())
+    async def determine_next_action(self, goal: str, actions: List[Dict]) -> List[Dict[str, Any]]:
+        action_prompt = self.create_action_prompt(goal, actions, self.global_event_log.to_narrative())
         tool_config = self.llm.get_tool_config("create_action")
-        action_response = await self.llm.create_chat_completion(action_prompt, self.get_last_user_message(user_id), tool_config)
+        action_response = await self.llm.create_chat_completion(action_prompt, self.get_last_message_from_log(), tool_config)
         
         if action_response and isinstance(action_response, list) and len(action_response) > 0:
             return action_response
         
         self.logger.warning("Failed to determine next action. Using default.")
         return [{"action": "send_message_to_student", "params": {"message": "I'm not sure how to proceed. Can you provide more information?"}}]
+
 
     async def execute_action(self, action_data: Dict[str, Any], communication_channel: CommunicationChannel) -> Tuple[bool, Any]:
         action = self.parse_action(communication_channel, action_data)
@@ -158,6 +200,7 @@ class ArcaneArchitecture:
         
         try:
             if action_name == "send_message_to_student":
+                self.logger.info("To student: " + params.get("message", "NO MESSAGE FOUND"))
                 return SendMessageToStudent(communication_channel=communication_channel, message=params.get("message", ""))
             elif action_name == "query_file_system":
                 return QueryFileSystem(command=params.get("command", ""), agent_id=self.agent_id)
@@ -169,10 +212,13 @@ class ArcaneArchitecture:
                 return CreateNewFile(file_path=params.get("file_path", ""), agent_id=self.agent_id)
             elif action_name == "run_python_file":
                 return RunPythonFile(file_path=params.get("file_path", ""), agent_id=self.agent_id)
-            elif action_name == "send_message_to_spaceship":
-                return SendMessageToSpaceship(message=params.get("message", ""))
-            elif action_name == "send_message_to_stratos":
-                return SendMessageToStratos(communication_channel=communication_channel, message=params.get("message", ""))
+            elif action_name == "send_niacl_message":  
+                return SendNIACLMessage(
+                    receiver=params.get("receiver", ""),
+                    message=params.get("message", ""),
+                    sender=self.agent_id,
+                    agent_config=self.agent_config 
+                )
             else:
                 self.logger.warning(f"Unknown action: {action_name}")
                 return None
@@ -180,27 +226,12 @@ class ArcaneArchitecture:
             self.logger.error(f"Missing required parameter for action {action_name}: {str(e)}")
             return None
 
-    def get_last_user_message(self, user_id: str) -> str:
-        for event in reversed(self.event_logs[user_id].events):
-            if event.type == "user_message":
+    def get_last_message(self, sender_id: str) -> str:
+        for event in reversed(self.global_event_log.events):
+            if event.type in ["user_message", "agent_message"]: 
                 return event.data.get('content', '')
         return ""
 
-    def create_goal_prompt(self, narrative: str) -> str:
-        context = self.create_system_message()
-        return f"""
-        {context}
-
-        You are an AI assistant tasked with setting a goal to address the user's latest message.
-        Given the following narrative of events, determine an appropriate goal.
-
-        Narrative:
-        ========
-        {narrative}
-        ========
-
-        Determine a goal that addresses the user's needs based on the context and narrative.
-        """
 
     def create_action_prompt(self, goal: str, actions: List[Dict], narrative: str) -> str:
         context = self.create_system_message()
@@ -208,8 +239,8 @@ class ArcaneArchitecture:
         return f"""
         {context}
 
-        You are an AI assistant tasked with determining the next action to take towards achieving a goal.
-        Given the following context, goal, action history, and narrative of events, decide on the next action.
+        I am an AI assistant tasked with determining the next action to take towards achieving a goal.
+        Given the following context, goal, action history, and narrative of events, I will decide on the next action.
 
         Goal:
         ========
@@ -226,7 +257,7 @@ class ArcaneArchitecture:
         {narrative}
         ========
 
-        Determine the next action to take to achieve the goal. Remember to communicate any retrieved information or completed tasks to the user.
+        I will determine the next action to take to achieve the goal. I will remember to communicate any retrieved information or completed tasks to the user.
         """
 
     def create_goal_check_prompt(self, goal: str, actions: List[Dict], narrative: str) -> str:
@@ -235,8 +266,8 @@ class ArcaneArchitecture:
         return f"""
         {context}
 
-        You are an AI assistant tasked with determining if a goal has been achieved.
-        Given the following context, goal, action history, and narrative of events, decide if the goal has been achieved.
+        I am an AI assistant tasked with determining if a goal has been achieved.
+        Given the following context, goal, action history, and narrative of events, I will decide if the goal has been achieved.
 
         Goal:
         ========
@@ -253,8 +284,11 @@ class ArcaneArchitecture:
         {narrative}
         ========
 
-        Determine whether the goal has been achieved based on the actions taken and the current state of the conversation.
-        Remember that the goal is not considered fully achieved until the results or completion of tasks have been communicated to the user.
+        I will determine whether the goal has been achieved based on the actions taken and the current state of the conversation.
+        The goal is considered achieved if the primary task (e.g., sending a message) has been completed.
+        Waiting for a response should not prevent the goal from being marked as achieved.
+
+        I will respond with a boolean: true if the goal is achieved, false if not.
         """
 
     def create_system_message(self) -> str:
@@ -264,18 +298,17 @@ class ArcaneArchitecture:
         IMPORTANT: After any action that retrieves information or performs a task, you MUST include a send_message_to_student action (for user messages) or other appropriate action.
         """
 
-    def get_event_log(self, user_id: str) -> EventLog:
-        return self.event_logs.get(user_id, EventLog())
+    def get_event_log(self) -> GlobalEventLog:
+        return self.global_event_log
 
-    def clear_event_log(self, user_id: str) -> None:
-        if user_id in self.event_logs:
-            self.event_logs[user_id] = EventLog()
+    def clear_event_log(self):
+        self.arcane_architecture.global_event_log = GlobalEventLog()
 
-    # async def handle_error(self, error: Exception, user_id: str, communication_channel: CommunicationChannel) -> None:
+    # async def handle_error(self, error: Exception, sender_id: str, communication_channel: CommunicationChannel) -> None:
     #     error_message = f"An error occurred: {str(error)}"
     #     self.logger.error(error_message)
     #     await communication_channel.send_message(error_message)
-    #     self.clear_event_log(user_id)
+    #     self.clear_event_log(sender_id)
 
     async def shutdown(self) -> None:
         self.logger.info("Shutting down ArcaneArchitecture")

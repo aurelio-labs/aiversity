@@ -8,6 +8,14 @@ from dotenv import load_dotenv
 from llm.LLM import LLM
 from ARCANE.agent_factory import AgentFactory
 from channels.web.fastapi_app import FastApiApp
+import shutil
+
+def clear_llm_logs():
+    log_folder = "llm_logs"
+    if os.path.exists(log_folder):
+        shutil.rmtree(log_folder)
+    os.makedirs(log_folder)
+    print(f"Cleared contents of {log_folder}")
 
 def run_server(agent_config, llm_config, port):
     from llm.LLM import LLM
@@ -23,6 +31,9 @@ def run_server(agent_config, llm_config, port):
 def main():
     load_dotenv()
     logger = setup_logger('SYS')
+
+    # Clear LLM logs before starting
+    clear_llm_logs()
     
     agent_configs = AgentFactory.load_agent_config()
     llm_config = {

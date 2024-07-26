@@ -6,6 +6,8 @@ import os
 import json
 from util import get_environment_variable
 import logging
+import time
+from datetime import datetime
 
 class LLMMessage(TypedDict):
     role: str
@@ -24,6 +26,20 @@ class LLM:
         self.completion_log: List[ChatCompletion] = []
         self.listeners = set()
         self.logging = logging
+        self.log_folder = "llm_logs"
+        os.makedirs(self.log_folder, exist_ok=True)
+
+    def log_request_response(self, request: Dict[str, Any], response: Any, success: bool):
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+        log_file = os.path.join(self.log_folder, f"{timestamp}_llm_log.json")
+        log_data = {
+            "timestamp": timestamp,
+            "request": request,
+            "response": response,
+            "success": success
+        }
+        with open(log_file, 'w') as f:
+            json.dump(log_data, f, indent=2)
 
     async def create_chat_completion(self, system_message: str, user_message: str, tool_config: Dict[str, Any]) -> List[Dict[str, Any]]:
         conversation = [
@@ -43,27 +59,34 @@ class LLM:
 
         tool = self.get_dynamic_tool(tool_config)
 
-        response = self.client.messages.create(
-            model=self.model,
-            messages=messages,
-            max_tokens=4000,
-            tools=[tool]
-        )
+        request = {
+            "model": self.model,
+            "messages": messages,
+            "max_tokens": 4000,
+            "tools": [tool]
+        }
 
-        actions = []
+
         try:
+            response = self.client.messages.create(**request)
+            actions = []
             for content_item in response.content:
                 if hasattr(content_item, 'name') and content_item.name == tool_config['name']:
                     if hasattr(content_item, 'input') and isinstance(content_item.input, dict):
                         actions.append(content_item.input)
+
+            success = len(actions) > 0
+            self.log_request_response(request, response.dict(), success)
+
+            if not actions:
+                self.logging.warning(f"No {tool_config['name']} were generated from the LLM response.")
+
+            return actions
+
         except Exception as e:
             self.logging.error(f"Error processing response content: {e}")
-            self.logging.debug(f"Response content: {response.content}")
-
-        if not actions:
-            self.logging.warning(f"No {tool_config['name']} were generated from the LLM response.")
-
-        return actions
+            self.log_request_response(request, str(e), False)
+            return []
 
     def get_dynamic_tool(self, config: Dict[str, Any]):
         return {
@@ -108,7 +131,7 @@ class LLM:
                         "properties": {
                             "action": {
                                 "type": "string",
-                                "enum": ["send_message_to_student", "query_file_system", "send_message_to_stratos", "send_message_to_spaceship", "view_file_contents", "edit_file_contents", "create_new_file", "run_python_file"],
+                                "enum": ["send_message_to_student", "query_file_system", "send_message_to_stratos", "send_message_to_spaceship", "view_file_contents", "edit_file_contents", "create_new_file", "run_python_file", "send_niacl_message"],
                                 "description": "The type of action to perform"
                             },
                             "params": {

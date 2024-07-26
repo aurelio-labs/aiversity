@@ -176,15 +176,12 @@ class SendNIACLMessage(Action):
         self.agent_config = agent_config
 
     async def execute(self) -> Tuple[bool, Optional[str]]:
+        # from remote_pdb import RemotePdb; RemotePdb('0.0.0.0', 5678).set_trace()
         try:
-            # Check if the receiver is in the allowed communications list
-            if self.receiver not in self.agent_config['allowed_communications']:
-                return False, f"Communication with {self.receiver} is not allowed."
-
             # Get the receiver's port from configuration
-            receiver_port = self.agent_config.get('port_mapping', {}).get(self.receiver)
+            receiver_port = self.get_agent_port(self.receiver)
             if not receiver_port:
-                return False, f"Port for {self.receiver} not found in configuration."
+                return False, f"Unable to find port for agent {self.receiver}"
 
             url = f"http://localhost:{receiver_port}/agent-message/"
             async with aiohttp.ClientSession() as session:
@@ -194,4 +191,13 @@ class SendNIACLMessage(Action):
                     else:
                         return False, f"Failed to send message to {self.receiver}. Status: {response.status}"
         except Exception as e:
+            print(str(e))
             return False, f"Error sending NIACL message: {str(e)}"
+
+    def get_agent_port(self, agent_id: str) -> Optional[int]:
+        # Extract the port from the agent ID
+        # Assuming the format is always NAME-PORT
+        try:
+            return int(agent_id.split('-')[-1])
+        except ValueError:
+            return None

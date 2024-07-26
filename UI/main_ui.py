@@ -61,7 +61,7 @@ class SharedWorkspace(QWidget):
 
     def __init__(self):
         super().__init__()
-        self.user_id = str(uuid.uuid4())
+        self.user_id = "user_robert"
         self.init_ui()
 
     def init_ui(self):
