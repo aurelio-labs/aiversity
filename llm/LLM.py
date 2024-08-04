@@ -109,17 +109,11 @@ class LLM:
 
     # Utility method to get predefined tool configurations
     @staticmethod
-    def get_tool_config(tool_type: str) -> Dict[str, Any]:
+    def get_tool_config(tool_type: str, agent_specific_actions: List[str] = None) -> Dict[str, Any]:
+        common_actions = ["query_file_system", "view_file_contents", "edit_file_contents", "create_new_file", "run_python_file", "send_niacl_message"]
+        all_actions = common_actions + (agent_specific_actions or [])
+
         tool_configs = {
-            "set_goal": {
-                "name": "set_goal",
-                "description": "Set a goal for the AI system. Remember that any goal involving retrieving or processing information must include communicating that information to the user.",
-                "output_key": "goal",
-                "output_schema": {
-                    "type": "string",
-                    "description": "The goal to be set"
-                }
-            },
             "create_action": {
                 "name": "create_action",
                 "description": "Create a structured action for the AI system to execute. IMPORTANT: After any action that retrieves information or performs a task, you MUST include a send_message_to_student action to communicate the results or acknowledge the completion of the task to the user.",
@@ -131,7 +125,7 @@ class LLM:
                         "properties": {
                             "action": {
                                 "type": "string",
-                                "enum": ["send_message_to_student", "query_file_system", "send_message_to_stratos", "send_message_to_spaceship", "view_file_contents", "edit_file_contents", "create_new_file", "run_python_file", "send_niacl_message"],
+                                "enum": all_actions,
                                 "description": "The type of action to perform"
                             },
                             "params": {
@@ -147,6 +141,15 @@ class LLM:
                         },
                         "required": ["action", "params"]
                     }
+                }
+            },
+            "set_goal": {
+                "name": "set_goal",
+                "description": "Set a goal for the AI system. Remember that any goal involving retrieving or processing information must include communicating that information to the user.",
+                "output_key": "goal",
+                "output_schema": {
+                    "type": "string",
+                    "description": "The goal to be set"
                 }
             },
             "goal_check": {
@@ -175,6 +178,39 @@ class LLM:
                         }
                     },
                     "required": ["should_reassess", "reason"]
+                }
+            },
+            "create_plan": {
+                "name": "create_plan",
+                "description": "Create a structured plan for a complex task, breaking it down into levels and tasks.",
+                "output_key": "plan",
+                "output_schema": {
+                    "type": "object",
+                    "properties": {
+                        "levels": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "order": {"type": "integer"},
+                                    "tasks": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object",
+                                            "properties": {
+                                                "name": {"type": "string"},
+                                                "description": {"type": "string"},
+                                                "agent_type": {"type": "string"}
+                                            },
+                                            "required": ["name", "description", "agent_type"]
+                                        }
+                                    }
+                                },
+                                "required": ["order", "tasks"]
+                            }
+                        }
+                    },
+                    "required": ["levels"]
                 }
             }
         }

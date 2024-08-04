@@ -14,6 +14,8 @@ from ARCANE.actions.file_manipulation import ViewFileContents, EditFileContents,
 from ARCANE.actions.send_message_to_spaceship import SendMessageToSpaceship
 from ARCANE.actions.file_manipulation import SendNIACLMessage
 
+from ARCANE.planning.stratos_planning import CreatePlan
+
 class Event:
     def __init__(self, event_type: str, data: Dict[str, Any], timestamp: Optional[datetime] = None):
         self.id = str(uuid.uuid4())
@@ -56,7 +58,7 @@ class GlobalEventLog:
         return "\n".join(narrative)
 
 class ArcaneArchitecture:
-    def __init__(self, llm: LLM, logger: logging.Logger, agent_id: str, agent_prompt: str, agent_config: dict):
+    def __init__(self, llm: LLM, logger: logging.Logger, agent_id: str, agent_prompt: str, agent_config: dict, arcane_system):
         self.llm = llm
         self.logger = logger
         self.agent_id = agent_id
@@ -64,6 +66,7 @@ class ArcaneArchitecture:
         self.global_event_log = GlobalEventLog()
         self.prompts = prompts
         self.agent_config = agent_config
+        self.arcane_system = arcane_system
         importlib.reload(prompts)
 
 
@@ -170,7 +173,7 @@ class ArcaneArchitecture:
 
     async def determine_next_action(self, goal: str, actions: List[Dict]) -> List[Dict[str, Any]]:
         action_prompt = self.create_action_prompt(goal, actions, self.global_event_log.to_narrative())
-        tool_config = self.llm.get_tool_config("create_action")
+        tool_config = self.llm.get_tool_config("create_action", agent_specific_actions=self.arcane_system.get_available_actions())
         action_response = await self.llm.create_chat_completion(action_prompt, self.get_last_message_from_log(), tool_config)
         
         if action_response and isinstance(action_response, list) and len(action_response) > 0:
@@ -219,6 +222,17 @@ class ArcaneArchitecture:
                     sender=self.agent_id,
                     agent_config=self.agent_config 
                 )
+            elif action_name == "create_plan":
+                print("Tried to create plan")
+                print(params.get("plan_name", "unnamed plan"))
+                print(params.get("plan_description", "lacking description"))
+                return None
+                # return CreatePlan(
+                #     plan_name=params.get("plan_name", "Unnamed Plan"),
+                #     plan_description=params.get("plan_description", ""),
+                #     llm_response=params.get("llm_response", {}),
+                #     agent_id=self.agent_id
+                # )
             else:
                 self.logger.warning(f"Unknown action: {action_name}")
                 return None

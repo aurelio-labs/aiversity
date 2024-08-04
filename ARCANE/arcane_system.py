@@ -7,16 +7,18 @@ from ARCANE.arcane_architecture import ArcaneArchitecture, Event, GlobalEventLog
 from channels.communication_channel import CommunicationChannel
 
 class ArcaneSystem:
-    def __init__(self, name: str, llm: LLM, model: str, logger: logging.Logger, port: int, agent_config: dict):
+    def __init__(self, name: str, llm: LLM, model: str, logger: logging.Logger, port: int, agent_config: dict, common_actions: List[Dict]):
         self.name = name
         self.llm = llm
         self.model = model
         self.logger = logger
-        self.agent_id = f"{name}-{port}"
-        self.agent_prompt = generate_agent_prompt(agent_config)
-        self.arcane_architecture = ArcaneArchitecture(self.llm, self.logger, self.agent_id, self.agent_prompt, agent_config)
+        self.agent_id = agent_config['id']
         self.agent_config = agent_config
-        self.allowed_communications = []
+        self.common_actions = common_actions
+        self.agent_prompt = generate_agent_prompt(agent_config, common_actions)
+        self.arcane_architecture = ArcaneArchitecture(self.llm, self.logger, self.agent_id, self.agent_prompt, self.agent_config, self)
+        self.allowed_communications = agent_config['allowed_communications']
+
 
     async def process_incoming_user_message(self, communication_channel: CommunicationChannel, user_id: str) -> Tuple[str, List[Dict[str, Any]]]:
         try:
@@ -44,10 +46,11 @@ class ArcaneSystem:
             return f"An error occurred: {str(e)}", []
 
     async def log_agent_message(self, sender: str, message: str):
-        event = Event("agent_message", {"sender": sender, "content": message})
-        self.arcane_architecture.global_event_log.add_event(event)
+        # Remove the event logging from here - was causing duplicate messages
+        # event = Event("agent_message", {"sender": sender, "content": message})
+        # self.arcane_architecture.global_event_log.add_event(event)
         
-        # Log the one-liner
+        # Keep only the print statement
         print(f"Received message from {sender}: {message[:50]}...")
         
 
@@ -72,3 +75,6 @@ class ArcaneSystem:
 
     async def handle_error(self, error: Exception, user_id: str, communication_channel: CommunicationChannel) -> None:
         await self.arcane_architecture.handle_error(error, user_id, communication_channel)
+
+    def get_available_actions(self) -> List[str]:
+        return [action['action'] for action in self.common_actions + self.agent_config['specific_actions']]
