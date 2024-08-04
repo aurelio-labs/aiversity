@@ -176,20 +176,26 @@ class SendNIACLMessage(Action):
         self.agent_config = agent_config
 
     async def execute(self) -> Tuple[bool, Optional[str]]:
-        # from remote_pdb import RemotePdb; RemotePdb('0.0.0.0', 5678).set_trace()
         try:
-            # Get the receiver's port from configuration
             receiver_port = self.get_agent_port(self.receiver)
             if not receiver_port:
                 return False, f"Unable to find port for agent {self.receiver}"
 
             url = f"http://localhost:{receiver_port}/agent-message/"
-            async with aiohttp.ClientSession() as session:
-                async with session.post(url, json={"message": self.message, "sender": self.sender}) as response:
-                    if response.status == 200:
-                        return True, f"Message sent asynchronously to {self.receiver}. Don't wait for a response, the agent is processing this."
-                    else:
-                        return False, f"Failed to send message to {self.receiver}. Status: {response.status}"
+            
+            # Create a new event loop for the asynchronous HTTP request
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            
+            async def send_request():
+                async with aiohttp.ClientSession() as session:
+                    async with session.post(url, json={"message": self.message, "sender": self.sender}) as response:
+                        await response.text()  # We don't wait for the response content
+
+            # Run the request in the background
+            asyncio.create_task(send_request())
+            
+            return True, f"Message sent asynchronously to {self.receiver}. Don't wait for a response, the agent is processing this."
         except Exception as e:
             print(str(e))
             return False, f"Error sending NIACL message: {str(e)}"

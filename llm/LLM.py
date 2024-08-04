@@ -116,7 +116,7 @@ class LLM:
         tool_configs = {
             "create_action": {
                 "name": "create_action",
-                "description": "Create a structured action for the AI system to execute. IMPORTANT: After any action that retrieves information or performs a task, you MUST include a send_message_to_student action to communicate the results or acknowledge the completion of the task to the user.",
+                "description": "Create a structured action for the AI system to execute. IMPORTANT: After any action that retrieves information or performs a task, you MUST include a send_message_to_student action to communicate the results or acknowledge the completion of the task to the user. You are only allowed to generate one action.",
                 "output_key": "actions",
                 "output_schema": {
                     "type": "array",

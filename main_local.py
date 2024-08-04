@@ -2,6 +2,7 @@ import asyncio
 import multiprocessing
 import signal
 import time
+from util import get_environment_variable
 from logging_util import setup_logger
 import os
 from dotenv import load_dotenv
@@ -17,14 +18,14 @@ def clear_llm_logs():
     os.makedirs(log_folder)
     print(f"Cleared contents of {log_folder}")
 
-def run_server(agent_config, common_actions, llm_config, port):
+def run_server(agent_config, common_actions, llm_config, port, api_key):
     from llm.LLM import LLM
     from ARCANE.agent_factory import AgentFactory
     from channels.web.fastapi_app import FastApiApp
     
     logger = setup_logger(agent_config['name'])
     llm = LLM(logger, **llm_config)
-    agent = AgentFactory.create_agent(agent_config, common_actions, llm, logger)
+    agent = AgentFactory.create_agent(agent_config, common_actions, llm, logger, api_key)
     app = FastApiApp(agent, llm, port)
     asyncio.run(app.run())
 
@@ -34,12 +35,15 @@ def main():
 
     # Clear LLM logs before starting
     clear_llm_logs()
+
+    anthropic_api_key = get_environment_variable('ANT_API_KEY')
     
     agent_configs = AgentFactory.load_agent_config()
     llm_config = {
         'api_key': os.getenv('ANT_API_KEY'),
         'model': os.getenv('CLAUDE_DEFAULT_MODEL')
     }
+
 
     common_actions = agent_configs['common_actions']
     
@@ -48,7 +52,7 @@ def main():
     for agent_config in agent_configs['agents']:
         p = multiprocessing.Process(
             target=run_server, 
-            args=(agent_config, common_actions, llm_config, agent_config['port'])
+            args=(agent_config, common_actions, llm_config, agent_config['port'], anthropic_api_key)
         )
         p.start()
         processes.append((p, agent_config['name']))

@@ -5,11 +5,11 @@ import logging
 
 class AgentFactory:
     @staticmethod
-    def create_agent(agent_config: dict, common_actions: list, llm: LLM, logger: logging.Logger) -> ArcaneSystem:
+    def create_agent(agent_config: dict, common_actions: list, llm: LLM, logger: logging.Logger, api_key) -> ArcaneSystem:
         name = agent_config['name']
         port = agent_config['port']
         
-        agent = ArcaneSystem(name, llm, llm.model, logger, port, agent_config=agent_config, common_actions=common_actions)
+        agent = ArcaneSystem(name, llm, llm.model, logger, port, agent_config=agent_config, common_actions=common_actions, api_key=api_key)
         
         print(f'{name} can talk to {agent.allowed_communications}')
         print(f'{name} has the following actions available: {agent.get_available_actions()}')

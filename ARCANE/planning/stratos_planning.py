@@ -3,26 +3,49 @@ import os
 from typing import Dict, Any, Optional, Tuple
 from ARCANE.planning.plan_structures import Plan, Level, Task
 from ARCANE.actions.action import Action
+import aiofiles
+import asyncio
 
 class CreatePlan(Action):
-    def __init__(self, plan_name: str, plan_description: str, llm_response: Dict[str, Any], agent_id: str):
+    def __init__(self, plan_name: str, plan_description: str, agent_id: str, llm):
         self.plan_name = plan_name
         self.plan_description = plan_description
-        self.llm_response = llm_response
         self.agent_id = agent_id
+        self.llm = llm
         self.workspace_root = os.path.join('aiversity_workspaces', agent_id)
 
     async def execute(self) -> Tuple[bool, Optional[str]]:
         try:
-            plan = self._create_plan_from_llm_response()
-            return await self._save_plan(plan)
+            # Generate plan using LLM
+            llm_response = await self._generate_plan_with_llm()
+            
+            # Create plan from LLM response
+            plan = self._create_plan_from_llm_response(llm_response)
+            
+            # Save plan
+            success, message = await self._save_plan(plan)
+            
+            if success:
+                return True, f"Plan created and saved successfully: {message}"
+            else:
+                return False, f"Failed to save plan: {message}"
         except Exception as e:
             return False, f"Error creating plan: {str(e)}"
 
-    def _create_plan_from_llm_response(self) -> Plan:
+    async def _generate_plan_with_llm(self) -> Dict[str, Any]:
+        tool_config = self.llm.get_tool_config("create_plan")
+        prompt = f"Create a plan for the following task: {self.plan_description}"
+        response = await self.llm.create_chat_completion(prompt, self.plan_name, tool_config)
+        
+        if response and isinstance(response, list) and len(response) > 0:
+            return response[0].get('plan', {})
+        else:
+            raise ValueError("Failed to generate plan with LLM")
+
+    def _create_plan_from_llm_response(self, llm_response: Dict[str, Any]) -> Plan:
         plan = Plan(self.plan_name, self.plan_description)
         
-        for level_data in self.llm_response.get('levels', []):
+        for level_data in llm_response.get('levels', []):
             level = Level(level_data['order'])
             for task_data in level_data.get('tasks', []):
                 task = Task(
@@ -35,54 +58,15 @@ class CreatePlan(Action):
         
         return plan
 
-    async def _save_plan(self, plan: Plan) -> Tuple[bool, Optional[str]]:
+    async def _save_plan(self, plan: Plan) -> Tuple[bool, str]:
         plan_dir = os.path.join(self.workspace_root, 'plans')
         os.makedirs(plan_dir, exist_ok=True)
         
         file_path = os.path.join(plan_dir, f"{plan.id}.json")
         
         try:
-            with open(file_path, 'w') as f:
-                json.dump(plan.to_dict(), f, indent=2)
-            return True, f"Plan saved successfully: {file_path}"
+            async with aiofiles.open(file_path, 'w') as f:
+                await f.write(json.dumps(plan.to_dict(), indent=2))
+            return True, file_path
         except Exception as e:
             return False, f"Error saving plan: {str(e)}"
-
-def load_plan(plan_id: str, agent_id: str) -> Optional[Plan]:
-    workspace_root = os.path.join('aiversity_workspaces', agent_id)
-    file_path = os.path.join(workspace_root, 'plans', f"{plan_id}.json")
-    
-    if not os.path.exists(file_path):
-        return None
-    
-    try:
-        with open(file_path, 'r') as f:
-            plan_data = json.load(f)
-        
-        plan = Plan(plan_data['name'], plan_data['description'])
-        plan.id = plan_data['id']
-        plan.status = plan_data['status']
-        plan.creation_time = datetime.fromisoformat(plan_data['creation_time'])
-        plan.last_updated = datetime.fromisoformat(plan_data['last_updated'])
-        
-        for level_data in plan_data['levels']:
-            level = Level(level_data['order'])
-            level.id = level_data['id']
-            level.status = level_data['status']
-            level.start_time = datetime.fromisoformat(level_data['start_time']) if level_data['start_time'] else None
-            level.end_time = datetime.fromisoformat(level_data['end_time']) if level_data['end_time'] else None
-            
-            for task_data in level_data['tasks']:
-                task = Task(task_data['name'], task_data['description'], task_data['agent_type'])
-                task.id = task_data['id']
-                task.status = task_data['status']
-                task.start_time = datetime.fromisoformat(task_data['start_time']) if task_data['start_time'] else None
-                task.end_time = datetime.fromisoformat(task_data['end_time']) if task_data['end_time'] else None
-                level.add_task(task)
-            
-            plan.add_level(level)
-        
-        return plan
-    except Exception as e:
-        print(f"Error loading plan: {str(e)}")
-        return None

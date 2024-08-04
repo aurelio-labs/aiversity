@@ -14,7 +14,7 @@ async def arcane_base_main(name, descriptor, model, port):
 
     anthropic_api_key = get_environment_variable('ANT_API_KEY')
     llm = LLM(logger)
-    arc = ArcaneSystem(name, llm, model, logger, port)
+    arc = ArcaneSystem(name, llm, model, logger, port, anthropic_api_key)
 
     await arc.start()
 

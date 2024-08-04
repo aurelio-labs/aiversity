@@ -35,9 +35,9 @@ class GlobalEventLog:
     def __init__(self):
         self.events: List[Event] = []
 
-    def add_event(self, event: Event):
+    def add_event(self, event: Event, agent_id: str):
         self.events.append(event)
-        print(f"Added event: {event.type} - {event.data}")
+        print(f"{agent_id} -> Added event: {event.type} - {event.data}")
 
     def get_recent_events(self, n: int) -> List[Event]:
         return sorted(self.events, key=lambda e: e.timestamp, reverse=True)[:n]
@@ -137,11 +137,11 @@ class ArcaneArchitecture:
         event_data = {"content": message, "sender": sender_id}
         
         # Add the incoming message to the global event log
-        self.global_event_log.add_event(Event(event_type, event_data))
+        self.global_event_log.add_event(Event(event_type, event_data), self.agent_id)
 
         # Generate the initial goal
         goal = await self.generate_initial_goal()
-        self.global_event_log.add_event(Event("goal_set", {"goal": goal}))
+        self.global_event_log.add_event(Event("goal_set", {"goal": goal}), self.agent_id)
 
         executed_actions = []
         max_iterations = 5  # Limit the number of iterations to prevent infinite loops
@@ -155,7 +155,7 @@ class ArcaneArchitecture:
 
             if next_action and isinstance(next_action, list) and len(next_action) > 0:
                 action_data = next_action[0]['actions'][0]
-                self.global_event_log.add_event(Event("agent_action", action_data))
+                self.global_event_log.add_event(Event("agent_action", action_data), self.agent_id)
                 
                 try:
                     success, result = await self.execute_action(action_data, communication_channel)
@@ -189,7 +189,13 @@ class ArcaneArchitecture:
             self.logger.warning(f"Unknown action: {action_data}")
             return False, "Unknown action"
         
-        success, result = await action.execute()
+        action_description = f"Executing {action_data['action']}"
+        await self.arcane_system.set_status("busy", action_description)
+        
+        try:
+            success, result = await action.execute()
+        finally:
+            await self.arcane_system.unset_busy_status()
         
         if action_data['action'] != 'send_message_to_student':
             brief_result = str(result)[:50] if result else "No result"
@@ -223,16 +229,12 @@ class ArcaneArchitecture:
                     agent_config=self.agent_config 
                 )
             elif action_name == "create_plan":
-                print("Tried to create plan")
-                print(params.get("plan_name", "unnamed plan"))
-                print(params.get("plan_description", "lacking description"))
-                return None
-                # return CreatePlan(
-                #     plan_name=params.get("plan_name", "Unnamed Plan"),
-                #     plan_description=params.get("plan_description", ""),
-                #     llm_response=params.get("llm_response", {}),
-                #     agent_id=self.agent_id
-                # )
+                return CreatePlan(
+                    plan_name=params.get("plan_name", "Unnamed Plan"),
+                    plan_description=params.get("plan_description", ""),
+                    agent_id=self.agent_id,
+                    llm=self.llm
+                )
             else:
                 self.logger.warning(f"Unknown action: {action_name}")
                 return None

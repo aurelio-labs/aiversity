@@ -102,15 +102,17 @@ class FastApiApp:
             message = data.get('message', '')
             sender = data.get('sender', '')
             
-            # No need to generate an interaction_id
+            print(f"Received agent message from {sender}: {message[:50]}...")  # Add this line
+            
             await self.arcane_system.log_agent_message(sender, message)
             
             try:
                 narrative, executed_actions = await self.arcane_system.process_incoming_agent_message(sender, message)
+                print(f"Processed agent message from {sender}. Actions: {len(executed_actions)}")  # Add this line
                 return JSONResponse(content={"success": True, "sender": sender}, status_code=200)
             except Exception as e:
+                print(f"Error processing agent message from {sender}: {str(e)}")  # Add this line
                 return JSONResponse(content={"success": False, "error": str(e)}, status_code=500)
-
 
 
         @app.get("/chat/")
