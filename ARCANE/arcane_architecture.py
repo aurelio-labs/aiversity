@@ -114,9 +114,24 @@ class ArcaneArchitecture:
         """
 
     async def goal_achieved(self, goal: str, actions: List[Dict]) -> bool:
-        goal_check_prompt = self.create_goal_check_prompt(goal, actions, self.global_event_log.to_narrative())
+        narrative = self.global_event_log.to_narrative()
+        goal_check_prompt = self.create_goal_check_prompt(goal, narrative)
         tool_config = self.llm.get_tool_config("goal_check")
-        goal_check_response = await self.llm.create_chat_completion(goal_check_prompt, json.dumps(actions), tool_config)
+        # from remote_pdb import RemotePdb; RemotePdb('0.0.0.0', 5678).set_trace()
+        user_message = f"""
+            Here is the goal:
+            ========
+            Current goal: {goal}
+            ========
+
+            Here is the current narrative:
+            ========
+            {narrative}
+            ========
+
+            Judge based on the above narrative...
+            """
+        goal_check_response = await self.llm.create_chat_completion(goal_check_prompt, narrative, tool_config)
         
         if goal_check_response and isinstance(goal_check_response, list) and len(goal_check_response) > 0:
             if isinstance(goal_check_response[0], dict):
@@ -276,23 +291,17 @@ class ArcaneArchitecture:
         I will determine the next action to take to achieve the goal. I will remember to communicate any retrieved information or completed tasks to the user.
         """
 
-    def create_goal_check_prompt(self, goal: str, actions: List[Dict], narrative: str) -> str:
+    def create_goal_check_prompt(self, goal: str, narrative: str) -> str:
         context = self.create_system_message()
-        action_log_str = json.dumps(actions, indent=2)
         return f"""
         {context}
 
         I am an AI assistant tasked with determining if a goal has been achieved.
-        Given the following context, goal, action history, and narrative of events, I will decide if the goal has been achieved.
+        Given the following context, goal, and narrative of events, I will decide if the goal has been achieved.
 
         Goal:
         ========
         {goal}
-        ========
-
-        Action History:
-        ========
-        {action_log_str}
         ========
 
         Narrative:
@@ -300,11 +309,15 @@ class ArcaneArchitecture:
         {narrative}
         ========
 
-        I will determine whether the goal has been achieved based on the actions taken and the current state of the conversation.
-        The goal is considered achieved if the primary task (e.g., sending a message) has been completed.
-        Waiting for a response should not prevent the goal from being marked as achieved.
+        Important Instructions:
+        1. I will base my determination PRIMARILY on the narrative of events.
+        2. The goal is considered achieved if the primary task described in the goal has been completed AND communicated or acknowledged in the narrative.
+        3. I will look for explicit evidence in the narrative that indicates the goal has been met.
+        4. Waiting for a response or future actions should not prevent the goal from being marked as achieved if the main task is complete.
+        5. If the narrative doesn't clearly indicate goal completion, I will consider the goal not achieved.
 
         I will respond with a boolean: true if the goal is achieved, false if not.
+        My response will be based solely on the information provided in the narrative.
         """
 
     def create_system_message(self) -> str:
