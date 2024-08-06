@@ -1,41 +1,55 @@
-import json
-import os
-from typing import Dict, Any, Optional, Tuple
-from ARCANE.planning.plan_structures import Plan, Level, Task
+# File: ARCANE/planning/stratos_planning.py
+
+from typing import Dict, Tuple, Optional, Any
 from ARCANE.actions.action import Action
-import aiofiles
-import asyncio
+from ARCANE.planning.plan_structures import Plan, Level, Task
+from ARCANE.planning.plan_persistence import PlanPersistence
+from ARCANE.planning.plan_executor import PlanExecutor
+from llm.LLM import LLM
+import logging
+import os
 
 class CreatePlan(Action):
-    def __init__(self, plan_name: str, plan_description: str, agent_id: str, llm):
+    def __init__(self, plan_name: str, plan_description: str, agent_id: str, llm: LLM, 
+                 agent_factory, stratos, logger: logging.Logger):
         self.plan_name = plan_name
         self.plan_description = plan_description
         self.agent_id = agent_id
         self.llm = llm
+        self.agent_factory = agent_factory
+        self.stratos = stratos
+        self.logger = logger
         self.workspace_root = os.path.join('aiversity_workspaces', agent_id)
+        self.plan_persistence = PlanPersistence(os.path.join(self.workspace_root, 'plans'))
 
     async def execute(self) -> Tuple[bool, Optional[str]]:
         try:
-            # Generate plan using LLM
             llm_response = await self._generate_plan_with_llm()
-            
-            # Create plan from LLM response
             plan = self._create_plan_from_llm_response(llm_response)
             
-            # Save plan
-            success, message = await self._save_plan(plan)
+            # Create a work directory for the plan
+            plan.work_directory = os.path.join(self.workspace_root, 'plans', plan.id)
+            os.makedirs(plan.work_directory, exist_ok=True)
             
-            if success:
-                return True, f"Plan created and saved successfully: {message}"
-            else:
-                return False, f"Failed to save plan: {message}"
+            await self.plan_persistence.save_plan(plan)
+            
+            executor = PlanExecutor(plan, self.agent_factory, self.stratos, self.llm, self.logger)
+            await executor.execute_plan()
+            
+            return True, f"Plan created, saved, and executed successfully. Plan ID: {plan.id}"
         except Exception as e:
-            return False, f"Error creating plan: {str(e)}"
+            return False, f"Error creating or executing plan: {str(e)}"
 
     async def _generate_plan_with_llm(self) -> Dict[str, Any]:
         tool_config = self.llm.get_tool_config("create_plan")
-        prompt = f"Create a plan for the following task: {self.plan_description}"
-        response = await self.llm.create_chat_completion(prompt, self.plan_name, tool_config)
+        prompt = f"""
+        I will create a plan for the following task: {self.plan_description}. 
+        I will create a structured plan for a complex task, breaking it down into levels and tasks. 
+        I shall remember that all tasks on a certain level execute in parallel, i.e. if a task depends on another task, they should be on separate levels. 
+        Outputs of previous levels are fed into the next level. By this I mean tasks on one level, don't have observability of outputs from other tasks on the same level. 
+        Dependencies should be on different levels. Generate with this flow in mind.
+        """
+        response = await self.llm.create_chat_completion(prompt, "Generate that plan now. Make sure items on the same level don't depend on each other - context is only passed down after an entire level is completed.", tool_config)
         
         if response and isinstance(response, list) and len(response) > 0:
             return response[0].get('plan', {})
@@ -57,16 +71,3 @@ class CreatePlan(Action):
             plan.add_level(level)
         
         return plan
-
-    async def _save_plan(self, plan: Plan) -> Tuple[bool, str]:
-        plan_dir = os.path.join(self.workspace_root, 'plans')
-        os.makedirs(plan_dir, exist_ok=True)
-        
-        file_path = os.path.join(plan_dir, f"{plan.id}.json")
-        
-        try:
-            async with aiofiles.open(file_path, 'w') as f:
-                await f.write(json.dumps(plan.to_dict(), indent=2))
-            return True, file_path
-        except Exception as e:
-            return False, f"Error saving plan: {str(e)}"

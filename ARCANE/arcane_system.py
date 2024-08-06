@@ -8,9 +8,10 @@ from ARCANE.arcane_architecture import ArcaneArchitecture, Event, GlobalEventLog
 from channels.communication_channel import CommunicationChannel
 import os
 import asyncio
+from collections import deque
 
 class ArcaneSystem:
-    def __init__(self, name: str, llm: LLM, model: str, logger: logging.Logger, port: int, agent_config: dict, common_actions: List[Dict], api_key):
+    def __init__(self, name: str, llm: LLM, model: str, logger: logging.Logger, port: int, agent_config: dict, common_actions: List[Dict], api_key, agent_factory):
         self.name = name
         self.llm = llm
         self.model = model
@@ -19,8 +20,11 @@ class ArcaneSystem:
         self.agent_config = agent_config
         self.common_actions = common_actions
         self.agent_prompt = generate_agent_prompt(agent_config, common_actions)
-        self.arcane_architecture = ArcaneArchitecture(self.llm, self.logger, self.agent_id, self.agent_prompt, self.agent_config, self)
+        self.agent_factory = agent_factory
+        self.arcane_architecture = ArcaneArchitecture(self.llm, self.logger, self.agent_id, self.agent_prompt, self.agent_config, self, self.agent_factory)
         self.allowed_communications = agent_config['allowed_communications']
+        self.message_queue = deque(maxlen=100)  # Limit to last 100 messages
+
 
         self.status = "idle"
         # if self.agent_id == "stratos-5001":
@@ -81,6 +85,7 @@ class ArcaneSystem:
             return f"An error occurred: {str(e)}", []
 
     async def process_incoming_agent_message(self, sender: str, message: str) -> Tuple[str, List[Dict[str, Any]]]:
+        self.message_queue.append((sender, message))
         if self.status == "busy":
             status_response = await self.get_status_response(sender)
             return status_response, []
@@ -129,3 +134,37 @@ class ArcaneSystem:
 
     def get_available_actions(self) -> List[str]:
         return [action['action'] for action in self.common_actions + self.agent_config['specific_actions']]
+    
+
+
+
+    async def evaluate_task_progress(self, response: str) -> Dict[str, Any]:
+        prompt = f"""
+        You are a Stratos clone overseeing a task. You've received the following response from an agent:
+
+        {response}
+
+        Evaluate whether the task is complete based on this response. If it's not complete, provide feedback for the agent.
+
+        Your evaluation should be in the following format:
+        {{
+            "is_complete": boolean,
+            "feedback": "Your feedback here if not complete, or 'Task completed successfully' if complete"
+        }}
+        """
+
+        tool_config = self.llm.get_tool_config("create_action")
+        evaluation_response = await self.llm.create_chat_completion(self.agent_prompt, prompt, tool_config)
+
+        if evaluation_response and isinstance(evaluation_response, list) and len(evaluation_response) > 0:
+            return evaluation_response[0]
+        else:
+            return {"is_complete": False, "feedback": "Unable to evaluate task progress. Please provide more information."}
+
+    def has_new_message(self) -> bool:
+        return len(self.message_queue) > 0
+
+    def get_latest_message(self) -> str:
+        if self.has_new_message():
+            return self.message_queue.popleft()[1]
+        return None

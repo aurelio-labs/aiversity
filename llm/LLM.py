@@ -79,6 +79,7 @@ class LLM:
             self.log_request_response(request, response.dict(), success)
 
             if not actions:
+                # from remote_pdb import RemotePdb; RemotePdb('0.0.0.0', 5678).set_trace()
                 self.logging.warning(f"No {tool_config['name']} were generated from the LLM response.")
 
             return actions
@@ -109,14 +110,16 @@ class LLM:
 
     # Utility method to get predefined tool configurations
     @staticmethod
-    def get_tool_config(tool_type: str, agent_specific_actions: List[str] = None) -> Dict[str, Any]:
-        common_actions = ["query_file_system", "view_file_contents", "edit_file_contents", "create_new_file", "run_python_file", "send_niacl_message"]
+    def get_tool_config(tool_type: str, agent_specific_actions: List[str] = None, isolated_agent: bool = False) -> Dict[str, Any]:
+        common_actions = ["query_file_system", "view_file_contents", "edit_file_contents", "create_new_file", "run_python_file"]
         all_actions = common_actions + (agent_specific_actions or [])
-
+        isolation = ""
+        if not isolated_agent:
+            isolation = "IMPORTANT: After any action that retrieves information or performs a task, you MUST include a send_message_to_student action to communicate the results or acknowledge the completion of the task to the user."
         tool_configs = {
             "create_action": {
                 "name": "create_action",
-                "description": "Create a structured action for the AI system to execute. IMPORTANT: After any action that retrieves information or performs a task, you MUST include a send_message_to_student action to communicate the results or acknowledge the completion of the task to the user. You are only allowed to generate one action.",
+                "description": f"Create a structured action for the AI system to execute. {isolation} You are only allowed to generate one action.",
                 "output_key": "actions",
                 "output_schema": {
                     "type": "array",
@@ -182,7 +185,7 @@ class LLM:
             },
             "create_plan": {
                 "name": "create_plan",
-                "description": "Create a structured plan for a complex task, breaking it down into levels and tasks.",
+                "description": "Create a structured plan for a complex task, breaking it down into levels and tasks. Remember, all tasks on a certain level execute in parallel, i.e. if a task depends on another task, they should be on separate levels. Outputs of previous levels are fed into the next level. By this I mean tasks on one level, don't have observability of outputs from other tasks on the same level. Dependencies should be on different levels. Generate with this flow in mind.",
                 "output_key": "plan",
                 "output_schema": {
                     "type": "object",

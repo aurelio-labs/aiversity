@@ -4,12 +4,24 @@ from llm.LLM import LLM
 import logging
 
 class AgentFactory:
-    @staticmethod
-    def create_agent(agent_config: dict, common_actions: list, llm: LLM, logger: logging.Logger, api_key) -> ArcaneSystem:
+    def __init__(self):
+        pass  # We can add any necessary initialization here
+
+    def create_agent(self, agent_config: dict, common_actions: list, llm: LLM, logger: logging.Logger, api_key) -> ArcaneSystem:
         name = agent_config['name']
         port = agent_config['port']
         
-        agent = ArcaneSystem(name, llm, llm.model, logger, port, agent_config=agent_config, common_actions=common_actions, api_key=api_key)
+        agent = ArcaneSystem(
+            name, 
+            llm, 
+            llm.model, 
+            logger, 
+            port, 
+            agent_config=agent_config, 
+            common_actions=common_actions, 
+            api_key=api_key,
+            agent_factory=self  # Pass the instance of AgentFactory
+        )
         
         print(f'{name} can talk to {agent.allowed_communications}')
         print(f'{name} has the following actions available: {agent.get_available_actions()}')

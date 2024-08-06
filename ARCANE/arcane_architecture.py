@@ -13,6 +13,7 @@ from ARCANE.actions.triage_agent_actions import SendMessageToStratos, SendMessag
 from ARCANE.actions.file_manipulation import ViewFileContents, EditFileContents, CreateNewFile, RunPythonFile, QueryFileSystem
 from ARCANE.actions.send_message_to_spaceship import SendMessageToSpaceship
 from ARCANE.actions.file_manipulation import SendNIACLMessage
+from ARCANE.actions.task_agent_actions import PerplexitySearch, DeclareComplete, CreateFile, ReadFile
 
 from ARCANE.planning.stratos_planning import CreatePlan
 
@@ -58,7 +59,7 @@ class GlobalEventLog:
         return "\n".join(narrative)
 
 class ArcaneArchitecture:
-    def __init__(self, llm: LLM, logger: logging.Logger, agent_id: str, agent_prompt: str, agent_config: dict, arcane_system):
+    def __init__(self, llm: LLM, logger: logging.Logger, agent_id: str, agent_prompt: str, agent_config: dict, arcane_system, agent_factory):
         self.llm = llm
         self.logger = logger
         self.agent_id = agent_id
@@ -67,7 +68,9 @@ class ArcaneArchitecture:
         self.prompts = prompts
         self.agent_config = agent_config
         self.arcane_system = arcane_system
+        self.agent_factory = agent_factory
         importlib.reload(prompts)
+        self.is_core_agent = agent_id in ['iris-5000', 'stratos-5001']
 
 
     async def send_niacl_message(self, receiver: str, message: str) -> Tuple[bool, str]:
@@ -212,7 +215,7 @@ class ArcaneArchitecture:
         finally:
             await self.arcane_system.unset_busy_status()
         
-        if action_data['action'] != 'send_message_to_student':
+        if action_data['action'] != 'send_message_to_student' and communication_channel is not None:
             brief_result = str(result)[:50] if result else "No result"
             await self.send_execution_update(communication_channel, action_data['action'], brief_result)
         
@@ -248,7 +251,30 @@ class ArcaneArchitecture:
                     plan_name=params.get("plan_name", "Unnamed Plan"),
                     plan_description=params.get("plan_description", ""),
                     agent_id=self.agent_id,
-                    llm=self.llm
+                    llm=self.llm,
+                    agent_factory=self.agent_factory,  # You'll need to add this as an attribute to ArcaneArchitecture
+                    stratos=self.arcane_system,  # This should be the ArcaneSystem instance
+                    logger=self.logger
+                )
+            elif action_name == "perplexity_search":
+                return PerplexitySearch(query=params.get("query", ""), api_key=self.agent_config.get("perplexity_api_key", ""))
+            elif action_name == "declare_complete":
+                return DeclareComplete(
+                    agent_id=self.agent_id,
+                    message=params.get("message", ""),
+                    files=params.get("files", []),
+                    work_directory=self.agent_config.get("work_directory", "")
+                )
+            elif action_name == "create_file":
+                return CreateFile(
+                    file_name=params.get("file_name", ""),
+                    content=params.get("content", ""),
+                    work_directory=self.agent_config.get("work_directory", "")
+                )
+            elif action_name == "read_file":
+                return ReadFile(
+                    file_name=params.get("file_name", ""),
+                    work_directory=self.agent_config.get("work_directory", "")
                 )
             else:
                 self.logger.warning(f"Unknown action: {action_name}")
