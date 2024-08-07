@@ -10,23 +10,34 @@ class PerplexitySearch(Action):
         self.api_key = api_key
 
     async def execute(self) -> Tuple[bool, Optional[str]]:
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
-        }
-        data = {
-            "query": self.query,
-            "max_tokens": 300  # Adjust as needed
+        url = "https://api.perplexity.ai/chat/completions"
+        
+        payload = {
+            "model": "llama-3.1-sonar-small-128k-online",
+            "messages": [
+                {
+                    "role": "system",
+                    "content": "Be precise and concise."
+                },
+                {
+                    "role": "user",
+                    "content": self.query
+                }
+            ]
         }
         
+        headers = {
+            "accept": "application/json",
+            "content-type": "application/json",
+            "authorization": f"Bearer {self.api_key}"
+        }
+
         async with aiohttp.ClientSession() as session:
-            async with session.post("https://api.perplexity.ai/chat/completions", 
-                                    headers=headers, 
-                                    data=json.dumps(data)) as response:
+            async with session.post(url, json=payload, headers=headers) as response:
                 if response.status == 200:
-                    result = await response.json()
-                    answer = result['choices'][0]['text']
-                    return True, f"Perplexity Search Result: {answer}"
+                    response_data = await response.json()
+                    result = response_data["choices"][0]['message']['content']
+                    return True, f"Perplexity Search Result:\n{result}"
                 else:
                     error_message = await response.text()
                     return False, f"Error performing Perplexity search: {response.status}, {error_message}"
