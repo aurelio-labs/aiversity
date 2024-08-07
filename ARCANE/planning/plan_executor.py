@@ -26,10 +26,12 @@ class PlanExecutor:
         os.makedirs(self.plan_directory, exist_ok=True)
         self.collective_narrative = []
         
-    async def execute_plan(self):
+    async def execute_plan(self) -> str:
+        collective_narrative = []
         for level in self.plan.levels:
             level_narrative = await self.execute_level(level)
-            self.collective_narrative.append(f"=== Level {level.order} ===\n{level_narrative}\n")
+            collective_narrative.append(f"=== Level {level.order} ===\n{level_narrative}\n")
+            self.logger.info(f"Executed Level {level.order}: {level_narrative}")
             await self.update_plan_status(level)
             await self.plan_persistence.update_plan_status(self.plan)
             
@@ -39,8 +41,7 @@ class PlanExecutor:
                 for task in next_level.tasks:
                     task.description += f"\nContext from previous level: {level_narrative}"
 
-        # Save the collective narrative
-        self.save_collective_narrative()
+        return "\n".join(collective_narrative)
 
     async def execute_level(self, level: Level):
         level.status = "In Progress"

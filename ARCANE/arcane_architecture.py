@@ -5,6 +5,7 @@ import uuid
 import logging
 import importlib
 import json
+from util import get_environment_variable
 from llm.LLM import LLM
 from channels.communication_channel import CommunicationChannel
 import ARCANE.agent_prompting.agent_prompts as prompts
@@ -15,7 +16,7 @@ from ARCANE.actions.send_message_to_spaceship import SendMessageToSpaceship
 from ARCANE.actions.file_manipulation import SendNIACLMessage
 from ARCANE.actions.task_agent_actions import PerplexitySearch, DeclareComplete, CreateFile, ReadFile
 
-from ARCANE.planning.stratos_planning import CreatePlan
+from ARCANE.planning.stratos_planning import DelegateAndExecuteTask
 
 class Event:
     def __init__(self, event_type: str, data: Dict[str, Any], timestamp: Optional[datetime] = None):
@@ -56,6 +57,8 @@ class GlobalEventLog:
                 narrative.append(f"[{event.timestamp}] Agent action:\n{action_data}")
             elif event.type == "goal_set":
                 narrative.append(f"[{event.timestamp}] Goal set: {event.data['goal']}")
+            elif event.type == "task_execution":
+                narrative.append(f"[{event.timestamp}] Task Execution:\n{event.data['content']}. Results may still need to be communicated with agents that requested this task.")
         return "\n".join(narrative)
 
 class ArcaneArchitecture:
@@ -214,6 +217,10 @@ class ArcaneArchitecture:
             success, result = await action.execute()
         finally:
             await self.arcane_system.unset_busy_status()
+
+        if isinstance(action, DelegateAndExecuteTask) and success:
+            self.global_event_log.add_event(Event("task_execution", {"content": result}), self.agent_id)
+    
         
         if action_data['action'] != 'send_message_to_student' and communication_channel is not None:
             brief_result = str(result)[:50] if result else "No result"
@@ -230,15 +237,15 @@ class ArcaneArchitecture:
                 self.logger.info("To student: " + params.get("message", "NO MESSAGE FOUND"))
                 return SendMessageToStudent(communication_channel=communication_channel, message=params.get("message", ""))
             elif action_name == "query_file_system":
-                return QueryFileSystem(command=params.get("command", ""), agent_id=self.agent_id)
+                return QueryFileSystem(command=params.get("command", ""), work_directory=self.agent_config.get("work_directory", ""))
             elif action_name == "view_file_contents":
-                return ViewFileContents(file_path=params.get("file_path", ""), agent_id=self.agent_id)
+                return ViewFileContents(file_path=params.get("file_path", ""), work_directory=self.agent_config.get("work_directory", ""))
             elif action_name == "edit_file_contents":
-                return EditFileContents(file_path=params.get("file_path", ""), content=params.get("content", ""), agent_id=self.agent_id)
+                return EditFileContents(file_path=params.get("file_path", ""), content=params.get("content", ""), work_directory=self.agent_config.get("work_directory", ""))
             elif action_name == "create_new_file":
-                return CreateNewFile(file_path=params.get("file_path", ""), agent_id=self.agent_id)
+                return CreateNewFile(file_path=params.get("file_path", ""), work_directory=self.agent_config.get("work_directory", ""))
             elif action_name == "run_python_file":
-                return RunPythonFile(file_path=params.get("file_path", ""), agent_id=self.agent_id)
+                return RunPythonFile(file_path=params.get("file_path", ""), work_directory=self.agent_config.get("work_directory", ""))
             elif action_name == "send_niacl_message":  
                 return SendNIACLMessage(
                     receiver=params.get("receiver", ""),
@@ -246,10 +253,10 @@ class ArcaneArchitecture:
                     sender=self.agent_id,
                     agent_config=self.agent_config 
                 )
-            elif action_name == "create_plan":
-                return CreatePlan(
-                    plan_name=params.get("plan_name", "Unnamed Plan"),
-                    plan_description=params.get("plan_description", ""),
+            elif action_name == "delegate_and_execute_task":
+                return DelegateAndExecuteTask(
+                    plan_name=params.get("task_name", "Unnamed Task"),
+                    plan_description=params.get("task_description", "No Description Given"),
                     agent_id=self.agent_id,
                     llm=self.llm,
                     agent_factory=self.agent_factory,  # You'll need to add this as an attribute to ArcaneArchitecture
@@ -257,23 +264,12 @@ class ArcaneArchitecture:
                     logger=self.logger
                 )
             elif action_name == "perplexity_search":
-                return PerplexitySearch(query=params.get("query", ""), api_key=self.agent_config.get("perplexity_api_key", ""))
+                return PerplexitySearch(query=params.get("query", ""), api_key=get_environment_variable('PERPLEXITY_API_KEY'))
             elif action_name == "declare_complete":
                 return DeclareComplete(
                     agent_id=self.agent_id,
                     message=params.get("message", ""),
                     files=params.get("files", []),
-                    work_directory=self.agent_config.get("work_directory", "")
-                )
-            elif action_name == "create_file":
-                return CreateFile(
-                    file_name=params.get("file_name", ""),
-                    content=params.get("content", ""),
-                    work_directory=self.agent_config.get("work_directory", "")
-                )
-            elif action_name == "read_file":
-                return ReadFile(
-                    file_name=params.get("file_name", ""),
                     work_directory=self.agent_config.get("work_directory", "")
                 )
             else:

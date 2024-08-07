@@ -24,7 +24,6 @@ The following actions are available to me:
 
 IMPORTANT: 
 - After any action that retrieves information or performs a task, I MUST include a send_message_to_student action (if available) to communicate the results or acknowledge the completion of the task to the user. 
-- When my task is complete, I should use the declare_complete action to signal completion and provide my final output.
 - I can create and read files in my work directory using the create_file and read_file actions.
 - I can perform web searches using the perplexity_search action when I need additional information.
 
@@ -77,7 +76,7 @@ def generate_action_example(agent_id, actions):
     else:
         return '''[
  {
- "action": "create_plan",
+ "action": "delegate_and_execute_task",
  "params": {
    "task": "Create a study schedule for the upcoming exams"
  }

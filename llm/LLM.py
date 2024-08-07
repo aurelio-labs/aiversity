@@ -183,8 +183,8 @@ class LLM:
                     "required": ["should_reassess", "reason"]
                 }
             },
-            "create_plan": {
-                "name": "create_plan",
+            "delegate_and_execute_task": {
+                "name": "delegate_and_execute_task",
                 "description": "Create a structured plan for a complex task, breaking it down into levels and tasks. Remember, all tasks on a certain level execute in parallel, i.e. if a task depends on another task, they should be on separate levels. Outputs of previous levels are fed into the next level. By this I mean tasks on one level, don't have observability of outputs from other tasks on the same level. Dependencies should be on different levels. Generate with this flow in mind.",
                 "output_key": "plan",
                 "output_schema": {

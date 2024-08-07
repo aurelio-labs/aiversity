@@ -9,7 +9,7 @@ from llm.LLM import LLM
 import logging
 import os
 
-class CreatePlan(Action):
+class DelegateAndExecuteTask(Action):
     def __init__(self, plan_name: str, plan_description: str, agent_id: str, llm: LLM, 
                  agent_factory, stratos, logger: logging.Logger):
         self.plan_name = plan_name
@@ -27,27 +27,45 @@ class CreatePlan(Action):
             llm_response = await self._generate_plan_with_llm()
             plan = self._create_plan_from_llm_response(llm_response)
             
-            # Create a work directory for the plan
             plan.work_directory = os.path.join(self.workspace_root, 'plans', plan.id)
             os.makedirs(plan.work_directory, exist_ok=True)
             
             await self.plan_persistence.save_plan(plan)
             
             executor = PlanExecutor(plan, self.agent_factory, self.stratos, self.llm, self.logger)
-            await executor.execute_plan()
+            collective_narrative = await executor.execute_plan()
             
-            return True, f"Plan created, saved, and executed successfully. Plan ID: {plan.id}"
+            # Generate a detailed summary message
+            summary_message = (f"Task '{plan.name}' was delegated and executed successfully. "
+                               f"Description: {plan.description}\n\n"
+                               f"Execution Details:\n{collective_narrative}\n\n"
+                               f"This task was broken down into subtasks and executed by specialized agents.")
+            
+            return True, summary_message
         except Exception as e:
-            return False, f"Error creating or executing plan: {str(e)}"
+            return False, f"Error delegating and executing task: {str(e)}"
 
     async def _generate_plan_with_llm(self) -> Dict[str, Any]:
-        tool_config = self.llm.get_tool_config("create_plan")
+        tool_config = self.llm.get_tool_config("delegate_and_execute_task")
         prompt = f"""
         I will create a plan for the following task: {self.plan_description}. 
         I will create a structured plan for a complex task, breaking it down into levels and tasks. 
         I shall remember that all tasks on a certain level execute in parallel, i.e. if a task depends on another task, they should be on separate levels. 
         Outputs of previous levels are fed into the next level. By this I mean tasks on one level, don't have observability of outputs from other tasks on the same level. 
         Dependencies should be on different levels. Generate with this flow in mind.
+        
+        IMPORTANT: When I use the delegate_and_execute_task action, I create a plan, delegate subtasks to specialized agents, and execute the entire task in a single step. The task will be fully planned, delegated, and executed before the action completes. The result of delegate_and_execute_task will provide a detailed summary of the task execution, including the actions taken by other agents.
+
+        Example of delegate_and_execute_task action:
+        {{
+        "action": "delegate_and_execute_task",
+        "params": {{
+            "task_name": "Create Study Schedule",
+            "task_description": "Create a comprehensive study schedule for a university student"
+        }}
+        }}
+
+        After using delegate_and_execute_task, I should evaluate whether the goal has been achieved based on the detailed execution summary provided in the result.
         """
         response = await self.llm.create_chat_completion(prompt, "Generate that plan now. Make sure items on the same level don't depend on each other - context is only passed down after an entire level is completed.", tool_config)
         
