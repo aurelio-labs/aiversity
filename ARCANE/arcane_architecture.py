@@ -17,6 +17,7 @@ from ARCANE.actions.file_manipulation import SendNIACLMessage
 from ARCANE.actions.task_agent_actions import PerplexitySearch, DeclareComplete, CreateFile, ReadFile
 
 from ARCANE.planning.stratos_planning import DelegateAndExecuteTask
+import os
 
 class Event:
     def __init__(self, event_type: str, data: Dict[str, Any], timestamp: Optional[datetime] = None):
@@ -343,11 +344,41 @@ class ArcaneArchitecture:
         """
 
     def create_system_message(self) -> str:
+        directory_contents = self.get_directory_contents()
         return f"""
         {self.agent_prompt}
         
         IMPORTANT: After any action that retrieves information or performs a task, you MUST include a send_message_to_student action (for user messages) or other appropriate action.
+
+        Current working directory structure and file contents:
+        {directory_contents}
         """
+    
+    def get_directory_contents(self):
+        work_directory = self.agent_config.get('work_directory')
+        if not work_directory:
+            # If work_directory is not set, use a default directory or return a message
+            return "No specific work directory set for this agent."
+
+        if not os.path.exists(work_directory):
+            return f"Work directory does not exist: {work_directory}"
+        structure = []
+        for root, dirs, files in os.walk(self.agent_config['work_directory']):
+            level = root.replace(self.agent_config['work_directory'], '').count(os.sep)
+            indent = ' ' * 4 * level
+            structure.append(f"{indent}{os.path.basename(root)}/")
+            subindent = ' ' * 4 * (level + 1)
+            for f in files:
+                if f.endswith(('.py', '.yaml', '.txt', '.json', '.md', '.csv')):
+                    file_path = os.path.join(root, f)
+                    relative_path = os.path.relpath(file_path, self.agent_config['work_directory'])
+                    structure.append(f"{subindent}{relative_path}")
+                    with open(file_path, 'r') as file:
+                        content = file.read()
+                    structure.append(f"{subindent}Content of {relative_path}:")
+                    structure.append(f"{subindent}{content}")
+        return '\n'.join(structure)
+
 
     def get_event_log(self) -> GlobalEventLog:
         return self.global_event_log

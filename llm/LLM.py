@@ -138,7 +138,8 @@ class LLM:
                                     "contents": {"type": "string"},
                                     "command": {"type": "string"},
                                     "file_path": {"type": "string"},
-                                    "content": {"type": "string"}
+                                    "content": {"type": "string"},
+                                    "query": {"type": "string"}
                                 }
                             }
                         },

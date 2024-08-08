@@ -83,7 +83,8 @@ class DelegateAndExecuteTask(Action):
                 task = Task(
                     name=task_data['name'],
                     description=task_data['description'],
-                    agent_type=task_data['agent_type']
+                    agent_type=task_data['agent_type'],
+                    level=level  # Pass the parent level
                 )
                 level.add_task(task)
             plan.add_level(level)

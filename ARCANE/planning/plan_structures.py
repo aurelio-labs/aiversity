@@ -3,7 +3,7 @@ from datetime import datetime
 import uuid
 
 class Task:
-    def __init__(self, name: str, description: str, agent_type: str, task_id: str = None):
+    def __init__(self, name: str, description: str, agent_type: str, task_id: str = None, level: 'Level' = None):
         self.id = task_id or str(uuid.uuid4())
         self.name = name
         self.description = description
@@ -13,6 +13,7 @@ class Task:
         self.end_time = None
         self.output_message: str = None
         self.output_files: List[Dict[str, str]] = []  # List of {filename: description}
+        self.level = level  # Reference to the parent Level
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -24,12 +25,13 @@ class Task:
             "start_time": self.start_time.isoformat() if self.start_time else None,
             "end_time": self.end_time.isoformat() if self.end_time else None,
             "output_message": self.output_message,
-            "output_files": self.output_files
+            "output_files": self.output_files,
+            "level_order": self.level.order if self.level else None
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'Task':
-        task = cls(data['name'], data['description'], data['agent_type'], data['id'])
+    def from_dict(cls, data: Dict[str, Any], level: 'Level' = None) -> 'Task':
+        task = cls(data['name'], data['description'], data['agent_type'], data['id'], level)
         task.status = data['status']
         task.start_time = datetime.fromisoformat(data['start_time']) if data['start_time'] else None
         task.end_time = datetime.fromisoformat(data['end_time']) if data['end_time'] else None
@@ -47,6 +49,7 @@ class Level:
         self.end_time = None
 
     def add_task(self, task: Task):
+        task.level = self  # Set the parent Level reference
         self.tasks.append(task)
 
     def to_dict(self) -> Dict[str, Any]:
@@ -62,7 +65,7 @@ class Level:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'Level':
         level = cls(data['order'], data['id'])
-        level.tasks = [Task.from_dict(task_data) for task_data in data['tasks']]
+        level.tasks = [Task.from_dict(task_data, level) for task_data in data['tasks']]
         level.status = data['status']
         level.start_time = datetime.fromisoformat(data['start_time']) if data['start_time'] else None
         level.end_time = datetime.fromisoformat(data['end_time']) if data['end_time'] else None

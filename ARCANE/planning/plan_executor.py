@@ -104,6 +104,7 @@ class TaskAgent:
 
     async def initialize(self):
         directory_contents = self.get_directory_contents()
+        plan_overview = self.get_plan_overview()
         
         task_agent_config = {
             "name": f"Task_{self.task.id}",
@@ -112,8 +113,17 @@ class TaskAgent:
             "allowed_communications": [],
             "specific_context": f"""I am a task-specific agent for the task: {self.task.description}
             My working directory is: {self.plan_directory}
-            Contents of my directory:
+
+            Project Directory Structure and File Contents:
             {directory_contents}
+
+            Overall Plan Overview:
+            {plan_overview}
+
+            My role in the plan:
+            - I am working on Level {self.task.level.order}
+            - My specific task is: {self.task.name}
+            - Task description: {self.task.description}
             """,
             "specific_actions": [],
             "personality": "I am focused and efficient in completing my assigned task.",
@@ -124,15 +134,30 @@ class TaskAgent:
         self.arcane_architecture = self.agent_factory.create_agent(task_agent_config, task_agent_config['common_actions'], self.llm, self.logger, get_environment_variable('ANT_API_KEY')).arcane_architecture
 
     def get_directory_contents(self):
-        contents = []
+        structure = []
         for root, dirs, files in os.walk(self.plan_directory):
             level = root.replace(self.plan_directory, '').count(os.sep)
-            indent = ' ' * 4 * (level)
-            contents.append(f'{indent}{os.path.basename(root)}/')
+            indent = ' ' * 4 * level
+            structure.append(f"{indent}{os.path.basename(root)}/")
             subindent = ' ' * 4 * (level + 1)
             for f in files:
-                contents.append(f'{subindent}{f}')
-        return '\n'.join(contents)
+                if f.endswith(('.py', '.yaml', '.txt', '.json', '.md', '.csv')):
+                    file_path = os.path.join(root, f)
+                    relative_path = os.path.relpath(file_path, self.plan_directory)
+                    structure.append(f"{subindent}{relative_path}")
+                    with open(file_path, 'r') as file:
+                        content = file.read()
+                    structure.append(f"{subindent}Content of {relative_path}:")
+                    structure.append(f"{subindent}{content}")
+        return '\n'.join(structure)
+
+    def get_plan_overview(self):
+        overview = f"Plan: {self.plan.name}\nDescription: {self.plan.description}\n\n"
+        for level in self.plan.levels:
+            overview += f"Level {level.order}:\n"
+            for task in level.tasks:
+                overview += f"  - Task: {task.name}\n    Description: {task.description}\n"
+        return overview
 
     async def execute(self):
         try:
