@@ -22,7 +22,8 @@ class QueryFileSystem(Action):
 
             # Execute the command
             result = subprocess.run(full_command, shell=True, check=True, capture_output=True, text=True)
-            return True, f"Command executed successfully. Output:\n{result.stdout}"
+            output = result.stdout if result.stdout else "no output returned"
+            return True, f"Command '{self.command}' executed successfully. Output:\n{output}"
         except subprocess.CalledProcessError as e:
             return False, f"Error executing command '{self.command}': {e.output}\nThis might be due to an invalid command or insufficient permissions."
         except FileNotFoundError:

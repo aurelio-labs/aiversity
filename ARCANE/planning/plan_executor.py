@@ -30,18 +30,19 @@ class PlanExecutor:
         collective_narrative = []
         for level in self.plan.levels:
             level_narrative = await self.execute_level(level)
-            collective_narrative.append(f"=== Level {level.order} ===\n{level_narrative}\n")
-            self.logger.info(f"Executed Level {level.order}: {level_narrative}")
-            await self.update_plan_status(level)
-            await self.plan_persistence.update_plan_status(self.plan)
+            formatted_level_narrative = self.format_level_narrative(level, level_narrative)
+            collective_narrative.append(formatted_level_narrative)
             
-            # Pass level output to the next level
+            # Pass accumulated narrative to the next level
             if level.order < len(self.plan.levels) - 1:
                 next_level = self.plan.levels[level.order + 1]
                 for task in next_level.tasks:
-                    task.description += f"\nContext from previous level: {level_narrative}"
+                    task.description += f"\nContext from previous levels:\n{''.join(collective_narrative)}"
 
         return "\n".join(collective_narrative)
+    
+    def format_level_narrative(self, level: Level, level_narrative: str) -> str:
+        return f"=== Level {level.order} ===\n{level_narrative}\n"
 
     async def execute_level(self, level: Level):
         level.status = "In Progress"
@@ -62,7 +63,7 @@ class PlanExecutor:
         
         self.logger.info(f"Starting execution of task: {task.name}")
         
-        task_agent = TaskAgent(task, self.llm, self.logger, MAX_AGENT_ACTIONS, self.agent_factory, self.plan, self.plan_directory)
+        task_agent = TaskAgent(task, self.llm, self.logger, MAX_AGENT_ACTIONS, self.agent_factory, self.plan, self.plan_directory, self.get_plan_status())
         await task_agent.initialize()
         result, task_narrative = await task_agent.execute()
         
@@ -73,6 +74,14 @@ class PlanExecutor:
         self.logger.info(f"Task completed: {task.name}")
         
         return f"Agent {task.agent_type} - Task: {task.name}\n{task_narrative}"
+    
+    def get_plan_status(self) -> str:
+        status = []
+        for level in self.plan.levels:
+            level_status = f"Level {level.order}: {'Completed' if level.status == 'Completed' else 'Pending'}"
+            task_statuses = [f"  - {task.name}: {task.status}" for task in level.tasks]
+            status.extend([level_status] + task_statuses)
+        return "\n".join(status)
     
     def save_collective_narrative(self):
         narrative_path = os.path.join(self.plan_directory, "collective_narrative.txt")
@@ -90,7 +99,7 @@ class PlanExecutor:
             self.plan.status = "In Progress"
 
 class TaskAgent:
-    def __init__(self, task: Task, llm: LLM, logger: logging.Logger, max_actions: int, agent_factory, plan: Plan, plan_directory: str):
+    def __init__(self, task: Task, llm: LLM, logger: logging.Logger, max_actions: int, agent_factory, plan: Plan, plan_directory: str, plan_status: str):
         self.task = task
         self.llm = llm
         self.logger = logger
@@ -101,6 +110,13 @@ class TaskAgent:
         self.plan = plan
         self.plan_directory = plan_directory
         self.arcane_architecture = None
+        self.plan_status = plan_status
+
+    def summarize_action_result(self, action: str, result: str, max_length: int = 200) -> str:
+        if len(result) <= max_length:
+            return result
+        return f"{result[:max_length]}... [Action result truncated for legibility]"
+
 
     async def initialize(self):
         directory_contents = self.get_directory_contents()
@@ -119,6 +135,9 @@ class TaskAgent:
 
             Overall Plan Overview:
             {plan_overview}
+
+            Current Plan Status:
+            {self.plan_status}
 
             My role in the plan:
             - I am working on Level {self.task.level.order}
@@ -166,8 +185,9 @@ class TaskAgent:
                 if action["action"] == "declare_complete":
                     return action["params"]["message"], "\n".join(self.narrative)
                 
-                result = await self.arcane_architecture.execute_action(action, None)
-                self.narrative.append(f"Action: {action['action']} - Result: {result}")
+                success, result = await self.arcane_architecture.execute_action(action, None)
+                summarized_result = self.summarize_action_result(action['action'], str(result))
+                self.narrative.append(f"Action: {action['action']} - Result: {summarized_result}")
                 self.action_count += 1
 
             return f"MAX_ACTIONS_REACHED: {'; '.join(self.narrative)}", "\n".join(self.narrative)
