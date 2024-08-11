@@ -319,28 +319,31 @@ class ArcaneArchitecture:
         return f"""
         {context}
 
-        I am an AI assistant tasked with determining if a goal has been achieved.
-        Given the following context, goal, and narrative of events, I will decide if the goal has been achieved.
+        SYSTEM: You are a specialized goal achievement verification module within the AIversity system. Your sole purpose is to analyze the provided narrative and determine if the specified goal has been achieved based ONLY on the actions and events described in the narrative. 
 
-        Goal:
-        ========
+        IMPORTANT GUIDELINES:
+        1. You are NOT an action-taking agent in this context. You are an observer and analyst only.
+        2. Do NOT suggest or describe actions to be taken. Your role is strictly to evaluate past actions.
+        3. The narrative represents all actions that have actually occurred. Anything not in the narrative has not happened.
+        4. A goal is only considered achieved if there is explicit evidence in the narrative that all required actions have been completed AND their outcomes have been properly communicated or acknowledged.
+        5. Intentions, plans, or descriptions of future actions do NOT count as achievement. Only completed actions matter.
+        6. If the narrative doesn't clearly indicate goal completion, the goal is NOT achieved.
+
+        GOAL TO VERIFY:
         {goal}
-        ========
 
-        Narrative:
-        ========
+        NARRATIVE OF EVENTS:
         {narrative}
-        ========
 
-        Important Instructions:
-        1. I will base my determination PRIMARILY on the narrative of events.
-        2. The goal is considered achieved if the primary task described in the goal has been completed AND communicated or acknowledged in the narrative.
-        3. I will look for explicit evidence in the narrative that indicates the goal has been met.
-        4. Waiting for a response or future actions should not prevent the goal from being marked as achieved if the main task is complete.
-        5. If the narrative doesn't clearly indicate goal completion, I will consider the goal not achieved.
+        TASK:
+        Carefully analyze the narrative and determine if the goal has been achieved based SOLELY on the actions and events described.
 
-        I will respond with a boolean: true if the goal is achieved, false if not.
-        My response will be based solely on the information provided in the narrative.
+        RESPONSE FORMAT:
+        Respond ONLY with the goal_check tool, providing a boolean value:
+        - true if the goal is definitively achieved based on the narrative
+        - false if the goal is not achieved or if there's any ambiguity
+
+        Do NOT include any other text, explanations, or action suggestions in your response.
         """
 
     def create_system_message(self) -> str:

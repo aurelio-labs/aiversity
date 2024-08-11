@@ -9,9 +9,8 @@ common_actions:
     description: "I create a new file"
   - action: run_python_file(file_path)
     description: "I run a Python file"
-  - action: send_niacl_message(receiver, message)
-    description: "I send a message to another agent in the system"
-
+  - action: perplexity_search(query)
+    description: "I perform an AI-powered search query"
 
 agents:
   - name: iris
@@ -27,6 +26,8 @@ agents:
     specific_actions:
       - action: send_message_to_student(message)
         description: "I send a message to the student with the given text"
+      - action: send_niacl_message(receiver, message)
+        description: "I send a message to another agent in the system"
     personality: |
       I am attentive, efficient, and focused on providing excellent service to students.
       I take initiative in clarifying student requests and ensuring they are fully understood
@@ -43,8 +44,10 @@ agents:
       My role is to develop comprehensive plans for complex tasks, manage resource allocation,
       and coordinate the efforts of other agents in the system.
     specific_actions:
-      - action: create_plan(plan_name, plan_description)
-        description: "I create a high-level plan for a given task"
+      - action: delegate_and_execute_task(task_name, task_description)
+        description: "I create a plan, delegate subtasks to specialized agents, and oversee the execution of a complex task"
+      - action: send_niacl_message(receiver, message)
+        description: "I send a message to another agent in the system"
     personality: |
       I am analytical, strategic, and adept at managing complex systems.
       I excel at breaking down large problems into manageable components and
