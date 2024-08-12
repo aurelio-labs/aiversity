@@ -109,15 +109,22 @@ class ArcaneArchitecture:
         return f"""
         {context}
 
-        I am an AI assistant tasked with setting a goal to address the latest message, which may be from a user or another agent.
-        Given the following narrative of events, I will determine an appropriate goal.
+        SYSTEM: You are a specialized goal-setting module within the AIversity system. Your sole purpose is to analyze the provided narrative and determine an appropriate goal based on the user's request or the current situation.
 
-        Narrative:
-        ========
+        IMPORTANT INSTRUCTIONS:
+        1. You must use ONLY the set_goal tool to define the goal.
+        2. Do NOT suggest or describe actions to be taken. Your role is strictly to set a goal.
+        3. The goal should be concise but descriptive, capturing the main objective based on the narrative.
+        4. The goal should be actionable and clear for other parts of the system to work with.
+
+        NARRATIVE OF EVENTS:
         {narrative}
-        ========
 
-        I will determine a goal that addresses the needs based on the context and narrative, whether it's from a user or another agent.
+        TASK:
+        Carefully analyze the narrative and determine an appropriate goal that addresses the user's request or the current situation.
+
+        RESPONSE FORMAT:
+        Use ONLY the set_goal tool to define the goal. Do not include any other text or explanations in your response.
         """
 
     async def goal_achieved(self, goal: str, actions: List[Dict]) -> bool:
@@ -244,7 +251,14 @@ class ArcaneArchitecture:
             elif action_name == "edit_file_contents":
                 return EditFileContents(file_path=params.get("file_path", ""), content=params.get("content", ""), work_directory=self.agent_config.get("work_directory", ""))
             elif action_name == "create_new_file":
-                return CreateNewFile(file_path=params.get("file_path", ""), work_directory=self.agent_config.get("work_directory", ""))
+                content = params.get("content", "")
+                if not content:
+                    content = params.get("contents", "")
+                return CreateNewFile(
+                    file_path=params.get("file_path", ""),
+                    work_directory=self.agent_config.get("work_directory", ""),
+                    content=content  # Add the content parameter here
+                )
             elif action_name == "run_python_file":
                 return RunPythonFile(file_path=params.get("file_path", ""), work_directory=self.agent_config.get("work_directory", ""))
             elif action_name == "send_niacl_message":  
@@ -260,8 +274,8 @@ class ArcaneArchitecture:
                     plan_description=params.get("task_description", "No Description Given"),
                     agent_id=self.agent_id,
                     llm=self.llm,
-                    agent_factory=self.agent_factory,  # You'll need to add this as an attribute to ArcaneArchitecture
-                    stratos=self.arcane_system,  # This should be the ArcaneSystem instance
+                    agent_factory=self.agent_factory,
+                    stratos=self.arcane_system,
                     logger=self.logger
                 )
             elif action_name == "perplexity_search":

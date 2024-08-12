@@ -50,24 +50,39 @@ class DelegateAndExecuteTask(Action):
         prompt = f"""
         I will create a plan for the following task: {self.plan_description}. 
         I will create a structured plan for a complex task, breaking it down into levels and tasks. 
-        I shall remember that all tasks on a certain level execute in parallel, i.e. if a task depends on another task, they should be on separate levels. 
-        Outputs of previous levels are fed into the next level. By this I mean tasks on one level, don't have observability of outputs from other tasks on the same level. 
-        Dependencies should be on different levels. Generate with this flow in mind.
-        
-        IMPORTANT: When I use the delegate_and_execute_task action, I create a plan, delegate subtasks to specialized agents, and execute the entire task in a single step. The task will be fully planned, delegated, and executed before the action completes. The result of delegate_and_execute_task will provide a detailed summary of the task execution, including the actions taken by other agents.
 
-        Example of delegate_and_execute_task action:
+        IMPORTANT GUIDELINES:
+        1. Tasks on the same level execute in parallel and should be independent of each other.
+        2. If a task depends on another task, they must be on separate levels.
+        3. Outputs of previous levels are fed into the next level. Tasks on one level don't have observability of outputs from other tasks on the same level.
+        4. Each task, especially those on the same level, should operate on separate files to avoid conflicts and overwrites.
+        5. Clearly specify the input and output files for each task.
+        6. Use descriptive and unique filenames for each task's output.
+        7. If a task needs to combine or process outputs from previous tasks, it should be on a new level.
+        8. Consider creating temporary or intermediate files for complex multi-step processes.
+
+        PLAN STRUCTURE:
+        For each task in the plan, include the following information:
+        - Task name and description
+        - Input files (if any)
+        - Output files (clearly specified)
+        - Agent type required for the task
+
+        Example task structure:
         {{
-        "action": "delegate_and_execute_task",
-        "params": {{
-            "task_name": "Create Study Schedule",
-            "task_description": "Create a comprehensive study schedule for a university student"
+        "name": "Analyze Student Data",
+        "description": "Process raw student data and generate summary statistics",
+        "agent_type": "DataAnalysisAgent",
+        "input_files": ["raw_student_data.csv"],
+        "output_files": ["student_data_summary.json", "student_performance_metrics.csv"]
         }}
-        }}
+
+        EXECUTION CONTEXT:
+        When I use the delegate_and_execute_task action, the plan will be fully executed before the action completes. The result will provide a detailed summary of the task execution, including the actions taken by other agents.
 
         After using delegate_and_execute_task, I should evaluate whether the goal has been achieved based on the detailed execution summary provided in the result.
         """
-        response = await self.llm.create_chat_completion(prompt, "Generate that plan now. Make sure items on the same level don't depend on each other - context is only passed down after an entire level is completed.", tool_config)
+        response = await self.llm.create_chat_completion(prompt, f"Generate a detailed plan for the task: {self.plan_description}. Ensure each task has clear file inputs and outputs, and that parallel tasks work on separate files.", tool_config)
         
         if response and isinstance(response, list) and len(response) > 0:
             return response[0].get('plan', {})
@@ -84,7 +99,9 @@ class DelegateAndExecuteTask(Action):
                     name=task_data['name'],
                     description=task_data['description'],
                     agent_type=task_data['agent_type'],
-                    level=level  # Pass the parent level
+                    level=level,
+                    input_files=task_data.get('input_files', []),
+                    output_files=task_data.get('output_files', [])
                 )
                 level.add_task(task)
             plan.add_level(level)

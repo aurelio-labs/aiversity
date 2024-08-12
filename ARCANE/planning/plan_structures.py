@@ -3,7 +3,7 @@ from datetime import datetime
 import uuid
 
 class Task:
-    def __init__(self, name: str, description: str, agent_type: str, task_id: str = None, level: 'Level' = None):
+    def __init__(self, name: str, description: str, agent_type: str, task_id: str = None, level: 'Level' = None, input_files: List[str] = None, output_files: List[str] = None):
         self.id = task_id or str(uuid.uuid4())
         self.name = name
         self.description = description
@@ -12,8 +12,10 @@ class Task:
         self.start_time = None
         self.end_time = None
         self.output_message: str = None
-        self.output_files: List[Dict[str, str]] = []  # List of {filename: description}
-        self.level = level  # Reference to the parent Level
+        self.output_files: List[Dict[str, str]] = []
+        self.level = level
+        self.input_files = input_files or []
+        self.output_files = output_files or []
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -26,12 +28,23 @@ class Task:
             "end_time": self.end_time.isoformat() if self.end_time else None,
             "output_message": self.output_message,
             "output_files": self.output_files,
-            "level_order": self.level.order if self.level else None
+            "level_order": self.level.order if self.level else None,
+            "input_files": self.input_files,
+            "output_files": self.output_files,
         }
+
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any], level: 'Level' = None) -> 'Task':
-        task = cls(data['name'], data['description'], data['agent_type'], data['id'], level)
+        task = cls(
+            data['name'], 
+            data['description'], 
+            data['agent_type'], 
+            data['id'], 
+            level,
+            data.get('input_files', []),
+            data.get('output_files', [])
+        )
         task.status = data['status']
         task.start_time = datetime.fromisoformat(data['start_time']) if data['start_time'] else None
         task.end_time = datetime.fromisoformat(data['end_time']) if data['end_time'] else None

@@ -10,7 +10,7 @@ from llm.LLM import LLM
 import logging
 import os
 
-MAX_AGENT_ACTIONS = 3
+MAX_AGENT_ACTIONS = 15
 
 class PlanExecutor:
     def __init__(self, plan: Plan, agent_factory, stratos, llm: LLM, logger: logging.Logger):
@@ -111,9 +111,11 @@ class TaskAgent:
         self.plan_directory = plan_directory
         self.arcane_architecture = None
         self.plan_status = plan_status
+        self.input_files = task.input_files
+        self.output_files = task.output_files
 
     def summarize_action_result(self, action: str, result: str, max_length: int = 200) -> str:
-        if len(result) <= max_length:
+        if len(result) <= max_length or action == 'perplexity_search':
             return result
         return f"{result[:max_length]}... [Action result truncated for legibility]"
 
@@ -181,7 +183,10 @@ class TaskAgent:
     async def execute(self):
         try:
             while self.action_count < self.max_actions:
+                # from remote_pdb import RemotePdb; RemotePdb('0.0.0.0', 5678).set_trace()
                 action = await self.determine_next_action()
+                # if action["action"] == "create_new_file":
+                #     from remote_pdb import RemotePdb; RemotePdb('0.0.0.0', 5678).set_trace()
                 if action["action"] == "declare_complete":
                     return action["params"]["message"], "\n".join(self.narrative)
                 
@@ -195,18 +200,86 @@ class TaskAgent:
             self.logger.error(f"Error executing task {self.task.name}: {str(e)}")
             return f"Error: {str(e)}", f"Error occurred: {str(e)}"
 
+#         - perplexity_search(query) - should be used for deep-dive research questions on the web. This sends an API request to perplexity and returns a deep-dive. Use sparingly.
+#        - declare_complete(message) - used when your task has been completed.
+    
+
     async def determine_next_action(self):
-        prompt = f"""
-        Task: {self.task.description}
+        context = self.create_task_context()
+        system_message = self.create_system_message()
+        action_prompt = self.create_action_prompt(context)
+        tool_config = self.llm.get_tool_config("create_action", agent_specific_actions=self.get_available_actions(), isolated_agent=True)
         
-        Current progress:
-        {'; '.join(self.narrative)}
+        full_prompt = f"{system_message}\n\n{action_prompt}"
         
-        Determine the next action to take. Available actions:
-        - perplexity_search(query)
-        - declare_complete(message)
+        action_response = await self.llm.create_chat_completion(full_prompt, context, tool_config)
         
-        Respond with a JSON object containing the action and its parameters.
+        if action_response and isinstance(action_response, list) and len(action_response) > 0:
+            return action_response[0].get('actions', [None])[0]
+        
+        self.logger.warning("Failed to determine next action. Using default.")
+        return None
+    
+    def create_system_message(self) -> str:
+        base_system_message = self.arcane_architecture.create_system_message()
+        task_specific_extension = f"""
+        You are currently a task-specific agent working on the following task:
+        Task Name: {self.task.name}
+        Task Description: {self.task.description}
+        
+        Your task has the following file inputs and expected outputs:
+        Input Files: {', '.join(self.input_files) if self.input_files else 'None'}
+        Expected Output Files: {', '.join(self.output_files) if self.output_files else 'None'}
+        
+        IMPORTANT: You must work only with the specified input and output files. Do not modify or create files that are not in your list of output files. If you need to create intermediate files, use a naming convention that includes your task ID to avoid conflicts.
+        
+        You are part of a larger plan and should focus on completing your specific task efficiently while adhering to the file management guidelines.
         """
-        response = await self.llm.create_chat_completion(prompt, "Determine next action", self.llm.get_tool_config("create_action", agent_specific_actions=["perplexity_search", "declare_complete"], isolated_agent=True))
-        return response[0]['actions'][0] if response and response[0].get('actions') else None
+        return f"{base_system_message}\n\n{task_specific_extension}"
+    
+
+    def create_task_context(self):
+        return f"""
+        Current Progress: {'; '.join(self.narrative)}
+        Overall Plan Status: {self.plan_status}
+        Current Working Directory: {self.plan_directory}
+        Input Files: {', '.join(self.input_files) if self.input_files else 'None'}
+        Expected Output Files: {', '.join(self.output_files) if self.output_files else 'None'}
+        """
+
+    def create_action_prompt(self, context: str) -> str:
+        available_actions = ", ".join(self.get_available_actions())
+        return f"""
+        CONTEXT:
+        {context}
+
+        AVAILABLE ACTIONS:
+        {available_actions}
+
+        TASK:
+        Based on the context provided and your specific task, determine the most appropriate next action to take. Consider the current progress, overall plan status, available resources, and the specified input and output files.
+
+        IMPORTANT FILE MANAGEMENT GUIDELINES:
+        1. Only read from the specified input files.
+        2. Only create or modify the specified output files.
+        3. If you need to create temporary files, use a naming convention that includes your task ID to avoid conflicts.
+        4. Do not attempt to access or modify files that are not in your input or output lists.
+
+        RESPONSE FORMAT:
+        Respond with a single action in JSON format, containing the action name and its parameters. For example:
+        {{
+            "action": "view_file_contents",
+            "params": {{
+                "file_path": "input_data.csv"
+            }}
+        }}
+
+        Ensure that you only use actions from the list of available actions provided and adhere to the file management guidelines.
+        """
+
+
+
+    def get_available_actions(self):
+        # Based on the actions given ot this agent, we should also fetch their descriptions from some static file.
+        # This method should return a list of actions available to this specific task agent
+        return ["perplexity_search", "declare_complete", "create_new_file", "edit_file_contents", "view_file_contents"]

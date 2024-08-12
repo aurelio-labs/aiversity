@@ -78,17 +78,18 @@ class EditFileContents(Action):
             return False, f"Error editing file '{self.file_path}': {str(e)}. This might be due to an I/O error, lack of disk space, or the file being in use by another process."
 
 class CreateNewFile(Action):
-    def __init__(self, file_path: str, work_directory: str):
+    def __init__(self, file_path: str, work_directory: str, content: str = ""):
         self.file_path = file_path
         self.work_directory = work_directory
+        self.content = content
 
     async def execute(self) -> Tuple[bool, Optional[str]]:
         full_path = os.path.join(self.work_directory, self.file_path)
         try:
             os.makedirs(os.path.dirname(full_path), exist_ok=True)
-            with open(full_path, 'x') as file:
-                pass
-            return True, f"File created successfully: {full_path}"
+            with open(full_path, 'w') as file:
+                file.write(self.content)  # Write the content to the file
+            return True, f"File created successfully with content: {full_path}"
         except FileExistsError:
             return False, f"Error: The file '{self.file_path}' already exists. Use the EditFileContents action to modify an existing file."
         except PermissionError:
@@ -100,7 +101,7 @@ class CreateNewFile(Action):
                 return False, f"Error creating file '{self.file_path}': {str(e)}. This might be due to an invalid file name or lack of disk space."
         except Exception as e:
             return False, f"Unexpected error creating file '{self.file_path}': {str(e)}. Please check the file path and try again."
-
+    
 class RunPythonFile(Action):
     def __init__(self, file_path: str, work_directory: str):
         self.file_path = file_path
