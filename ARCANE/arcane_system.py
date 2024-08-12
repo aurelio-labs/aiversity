@@ -19,7 +19,7 @@ class ArcaneSystem:
         self.agent_id = agent_config['id']
         self.agent_config = agent_config
         self.common_actions = common_actions
-        self.agent_prompt = generate_agent_prompt(agent_config, common_actions)
+        self.agent_prompt = generate_agent_prompt(agent_config)
         self.agent_factory = agent_factory
         self.arcane_architecture = ArcaneArchitecture(self.llm, self.logger, self.agent_id, self.agent_prompt, self.agent_config, self, self.agent_factory)
         self.allowed_communications = agent_config['allowed_communications']
@@ -153,7 +153,7 @@ class ArcaneSystem:
         }}
         """
 
-        tool_config = self.llm.get_tool_config("create_action")
+        tool_config = self.llm.get_tool_config("create_action", self.agent_id)
         evaluation_response = await self.llm.create_chat_completion(self.agent_prompt, prompt, tool_config)
 
         if evaluation_response and isinstance(evaluation_response, list) and len(evaluation_response) > 0:

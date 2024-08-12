@@ -46,7 +46,7 @@ class DelegateAndExecuteTask(Action):
             return False, f"Error delegating and executing task: {str(e)}"
 
     async def _generate_plan_with_llm(self) -> Dict[str, Any]:
-        tool_config = self.llm.get_tool_config("delegate_and_execute_task")
+        tool_config = self.llm.get_tool_config("delegate_and_execute_task", self.agent_id)
         prompt = f"""
         I will create a plan for the following task: {self.plan_description}. 
         I will create a structured plan for a complex task, breaking it down into levels and tasks. 

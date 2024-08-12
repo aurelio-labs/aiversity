@@ -4,7 +4,7 @@ from typing import List, TypedDict, Optional, Callable, Dict, Any
 from anthropic import Anthropic
 import os
 import json
-from util import get_environment_variable
+from util import load_actions, get_environment_variable
 import logging
 import time
 from datetime import datetime
@@ -108,14 +108,15 @@ class LLM:
     def remove_completion_listener(self, listener: Callable[[ChatCompletion], None]) -> None:
         self.listeners.discard(listener)
 
-    # Utility method to get predefined tool configurations
     @staticmethod
-    def get_tool_config(tool_type: str, agent_specific_actions: List[str] = None, isolated_agent: bool = False) -> Dict[str, Any]:
-        common_actions = ["query_file_system", "view_file_contents", "edit_file_contents", "create_new_file", "run_python_file"]
-        all_actions = common_actions + (agent_specific_actions or [])
+    def get_tool_config(tool_type: str, agent_type: str, isolated_agent: bool = False) -> Dict[str, Any]:
+        actions = load_actions(agent_type)
+        action_names = [action['name'] for action in actions]
+        
         isolation = ""
-        if not isolated_agent:
+        if not isolated_agent and 'send_message_to_student' in action_names:
             isolation = "IMPORTANT: After any action that retrieves information or performs a task, you MUST include a send_message_to_student action to communicate the results or acknowledge the completion of the task to the user."
+
         tool_configs = {
             "create_action": {
                 "name": "create_action",
@@ -128,18 +129,13 @@ class LLM:
                         "properties": {
                             "action": {
                                 "type": "string",
-                                "enum": all_actions,
+                                "enum": action_names,
                                 "description": "The type of action to perform"
                             },
                             "params": {
                                 "type": "object",
                                 "properties": {
-                                    "message": {"type": "string"},
-                                    "contents": {"type": "string"},
-                                    "command": {"type": "string"},
-                                    "file_path": {"type": "string"},
-                                    "content": {"type": "string"},
-                                    "query": {"type": "string"}
+                                    action['name']: {"type": "object"} for action in actions
                                 }
                             }
                         },

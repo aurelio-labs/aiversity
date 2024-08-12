@@ -24,7 +24,6 @@ class AgentFactory:
         )
         
         print(f'{name} can talk to {agent.allowed_communications}')
-        print(f'{name} has the following actions available: {agent.get_available_actions()}')
         
         return agent
 

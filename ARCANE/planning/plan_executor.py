@@ -113,6 +113,7 @@ class TaskAgent:
         self.plan_status = plan_status
         self.input_files = task.input_files
         self.output_files = task.output_files
+        self.task_agent_config = None
 
     def summarize_action_result(self, action: str, result: str, max_length: int = 200) -> str:
         if len(result) <= max_length or action == 'perplexity_search':
@@ -152,6 +153,7 @@ class TaskAgent:
             "common_actions": [],
             "port": "n/a"
         }
+        self.task_agent_config = task_agent_config
         self.arcane_architecture = self.agent_factory.create_agent(task_agent_config, task_agent_config['common_actions'], self.llm, self.logger, get_environment_variable('ANT_API_KEY')).arcane_architecture
 
     def get_directory_contents(self):
@@ -208,7 +210,7 @@ class TaskAgent:
         context = self.create_task_context()
         system_message = self.create_system_message()
         action_prompt = self.create_action_prompt(context)
-        tool_config = self.llm.get_tool_config("create_action", agent_specific_actions=self.get_available_actions(), isolated_agent=True)
+        tool_config = self.llm.get_tool_config("create_action", self.task_agent_config['name'], isolated_agent=True)
         
         full_prompt = f"{system_message}\n\n{action_prompt}"
         

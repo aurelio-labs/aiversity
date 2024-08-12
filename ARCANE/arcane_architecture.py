@@ -86,7 +86,7 @@ class ArcaneArchitecture:
         last_message = self.get_last_message_from_log()
         
         goal_prompt = self.create_goal_prompt(narrative)
-        tool_config = self.llm.get_tool_config("set_goal")
+        tool_config = self.llm.get_tool_config("set_goal", self.agent_config['name'])
         goal_response = await self.llm.create_chat_completion(goal_prompt, last_message, tool_config)
         
         if goal_response and isinstance(goal_response, list) and len(goal_response) > 0:
@@ -130,7 +130,7 @@ class ArcaneArchitecture:
     async def goal_achieved(self, goal: str, actions: List[Dict]) -> bool:
         narrative = self.global_event_log.to_narrative()
         goal_check_prompt = self.create_goal_check_prompt(goal, narrative)
-        tool_config = self.llm.get_tool_config("goal_check")
+        tool_config = self.llm.get_tool_config("goal_check", self.agent_id)
         # from remote_pdb import RemotePdb; RemotePdb('0.0.0.0', 5678).set_trace()
         user_message = f"""
             Here is the goal:
@@ -202,7 +202,7 @@ class ArcaneArchitecture:
 
     async def determine_next_action(self, goal: str, actions: List[Dict]) -> List[Dict[str, Any]]:
         action_prompt = self.create_action_prompt(goal, actions, self.global_event_log.to_narrative())
-        tool_config = self.llm.get_tool_config("create_action", agent_specific_actions=self.arcane_system.get_available_actions())
+        tool_config = self.llm.get_tool_config("create_action", agent_type=self.agent_id.split('-')[0])
         action_response = await self.llm.create_chat_completion(action_prompt, self.get_last_message_from_log(), tool_config)
         
         if action_response and isinstance(action_response, list) and len(action_response) > 0:
@@ -240,58 +240,23 @@ class ArcaneArchitecture:
         action_name = action_data.get("action")
         params = action_data.get("params", {})
         
-        try:
-            if action_name == "send_message_to_student":
-                self.logger.info("To student: " + params.get("message", "NO MESSAGE FOUND"))
-                return SendMessageToStudent(communication_channel=communication_channel, message=params.get("message", ""))
-            elif action_name == "query_file_system":
-                return QueryFileSystem(command=params.get("command", ""), work_directory=self.agent_config.get("work_directory", ""))
-            elif action_name == "view_file_contents":
-                return ViewFileContents(file_path=params.get("file_path", ""), work_directory=self.agent_config.get("work_directory", ""))
-            elif action_name == "edit_file_contents":
-                return EditFileContents(file_path=params.get("file_path", ""), content=params.get("content", ""), work_directory=self.agent_config.get("work_directory", ""))
-            elif action_name == "create_new_file":
-                content = params.get("content", "")
-                if not content:
-                    content = params.get("contents", "")
-                return CreateNewFile(
-                    file_path=params.get("file_path", ""),
-                    work_directory=self.agent_config.get("work_directory", ""),
-                    content=content  # Add the content parameter here
-                )
-            elif action_name == "run_python_file":
-                return RunPythonFile(file_path=params.get("file_path", ""), work_directory=self.agent_config.get("work_directory", ""))
-            elif action_name == "send_niacl_message":  
-                return SendNIACLMessage(
-                    receiver=params.get("receiver", ""),
-                    message=params.get("message", ""),
-                    sender=self.agent_id,
-                    agent_config=self.agent_config 
-                )
-            elif action_name == "delegate_and_execute_task":
-                return DelegateAndExecuteTask(
-                    plan_name=params.get("task_name", "Unnamed Task"),
-                    plan_description=params.get("task_description", "No Description Given"),
-                    agent_id=self.agent_id,
-                    llm=self.llm,
-                    agent_factory=self.agent_factory,
-                    stratos=self.arcane_system,
-                    logger=self.logger
-                )
-            elif action_name == "perplexity_search":
-                return PerplexitySearch(query=params.get("query", ""), api_key=get_environment_variable('PERPLEXITY_API_KEY'))
-            elif action_name == "declare_complete":
-                return DeclareComplete(
-                    agent_id=self.agent_id,
-                    message=params.get("message", ""),
-                    files=params.get("files", []),
-                    work_directory=self.agent_config.get("work_directory", "")
-                )
-            else:
-                self.logger.warning(f"Unknown action: {action_name}")
-                return None
-        except KeyError as e:
-            self.logger.error(f"Missing required parameter for action {action_name}: {str(e)}")
+        action_map = {
+            "run_command": lambda: QueryFileSystem(command=params.get("command", ""), work_directory=self.agent_config.get("work_directory", "")),
+            "view_file_contents": lambda: ViewFileContents(file_path=params.get("file_path", ""), work_directory=self.agent_config.get("work_directory", "")),
+            "edit_file_contents": lambda: EditFileContents(file_path=params.get("file_path", ""), content=params.get("content", ""), work_directory=self.agent_config.get("work_directory", "")),
+            "create_new_file": lambda: CreateNewFile(file_path=params.get("file_path", ""), work_directory=self.agent_config.get("work_directory", ""), content=params.get("contents", "")),
+            "run_python_file": lambda: RunPythonFile(file_path=params.get("file_path", ""), work_directory=self.agent_config.get("work_directory", "")),
+            "perplexity_search": lambda: PerplexitySearch(query=params.get("query", ""), api_key=get_environment_variable('PERPLEXITY_API_KEY')),
+            "send_message_to_student": lambda: SendMessageToStudent(communication_channel=communication_channel, message=params.get("message", "")),
+            "send_niacl_message": lambda: SendNIACLMessage(receiver=params.get("receiver", ""), message=params.get("message", ""), sender=self.agent_id, agent_config=self.agent_config),
+            "delegate_and_execute_task": lambda: DelegateAndExecuteTask(plan_name=params.get("task_name", "Unnamed Task"), plan_description=params.get("task_description", "No Description Given"), agent_id=self.agent_id, llm=self.llm, agent_factory=self.agent_factory, stratos=self.arcane_system, logger=self.logger),
+            "declare_complete": lambda: DeclareComplete(agent_id=self.agent_id, message=params.get("message", ""), files=params.get("files", []), work_directory=self.agent_config.get("work_directory", ""))
+        }
+        
+        if action_name in action_map:
+            return action_map[action_name]()
+        else:
+            self.logger.warning(f"Unknown action: {action_name}")
             return None
 
     def get_last_message(self, sender_id: str) -> str:

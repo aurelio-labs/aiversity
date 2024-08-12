@@ -1,3 +1,5 @@
+from util import load_actions
+
 base_prompt = """
 I am an AI agent in the AIversity adaptive learning system. My role is to assist in providing personalized educational experiences.
 
@@ -24,7 +26,7 @@ The following actions are available to me:
 
 IMPORTANT: 
 - After any action that retrieves information or performs a task, I MUST include a send_message_to_student action (if available) to communicate the results or acknowledge the completion of the task to the user. 
-- I can create and read files in my work directory using the create_file and read_file actions.
+- I can create and read files in my work directory using the create_new_file and view_file_contents actions.
 - I can perform web searches using the perplexity_search action when I need additional information.
 
 I don't make up new actions, I only use the ones defined above.
@@ -38,26 +40,36 @@ If I trigger an action that has a return value, I make sure to include its resul
 I always stay within my defined role and use only the actions available to me.
 """
 
+def generate_agent_prompt(agent_config):
+    agent_name = agent_config['name']
+    
+    # Determine the agent type
+    if agent_name.startswith("Task_"):
+        agent_type = "task_agent"
+    else:
+        agent_type = agent_name
 
-def generate_agent_prompt(agent_config, common_actions):
-    agent_id = agent_config['id']
-    specific_actions = agent_config['specific_actions']
-    all_actions = common_actions + specific_actions
+    actions = load_actions(agent_type)
     
-    action_descriptions = "\n".join([f"- {action['action']}: {action['description']}" for action in all_actions])
+    all_actions = ", ".join([action['name'] for action in actions])
     
-    action_example = generate_action_example(agent_id, all_actions)
+    action_descriptions = "\n".join([
+        f"- {action['name']}{action['parameters']}: {action['description']}"
+        for action in actions
+    ])
+    
+    action_example = generate_action_example(agent_type)
     
     return base_prompt.format(
         specific_context=agent_config['specific_context'],
         personality=agent_config['personality'],
-        all_actions=", ".join([action['action'] for action in all_actions]),
+        all_actions=all_actions,
         action_descriptions=action_descriptions,
         action_example=action_example
     )
 
-def generate_action_example(agent_id, actions):
-    if agent_id == "iris-5000":
+def generate_action_example(agent_type):
+    if agent_type == "iris":
         return '''[
  {
  "action": "send_niacl_message",
@@ -73,12 +85,13 @@ def generate_action_example(agent_id, actions):
  }
  }
 ]'''
-    else:
+    elif agent_type == "stratos":
         return '''[
  {
  "action": "delegate_and_execute_task",
  "params": {
-   "task": "Create a study schedule for the upcoming exams"
+   "task_name": "Create study schedule",
+   "task_description": "Create a study schedule for the upcoming exams"
  }
  },
  {
@@ -86,6 +99,45 @@ def generate_action_example(agent_id, actions):
  "params": {
    "receiver": "Iris-5000",
    "message": "I've created a study plan. Please inform the student that it's ready."
+ }
+ }
+]'''
+    elif agent_type == "task_agent":
+        return '''[
+ {
+ "action": "perplexity_search",
+ "params": {
+   "query": "Effective study techniques for exam preparation"
+ }
+ },
+ {
+ "action": "create_new_file",
+ "params": {
+   "file_path": "study_tips.txt",
+   "contents": "1. Use active recall\n2. Practice spaced repetition\n3. Teach the material to others"
+ }
+ },
+ {
+ "action": "declare_complete",
+ "params": {
+   "message": "I've compiled a list of effective study techniques and saved them to a file.",
+   "files": [{"name": "study_tips.txt", "description": "List of effective study techniques"}]
+ }
+ }
+]'''
+    else:
+        return '''[
+ {
+ "action": "perplexity_search",
+ "params": {
+   "query": "General information about the requested task"
+ }
+ },
+ {
+ "action": "create_new_file",
+ "params": {
+   "file_path": "task_output.txt",
+   "contents": "Task output goes here"
  }
  }
 ]'''
