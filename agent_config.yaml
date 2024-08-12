@@ -17,17 +17,14 @@ agents:
     id: iris-5000
     descriptor: "Intelligent Routing and Information System"
     port: 5000
+    work_directory: "aiversity_workspaces/Iris-5000"
     allowed_communications:
       - STRATOS-5001
     specific_context: |
       I am Iris, the Intelligent Routing and Information System for AIversity.
       My primary role is to interface between students and the internal multi-agent system,
       ensuring efficient and effective communication and task management.
-    specific_actions:
-      - action: send_message_to_student(message)
-        description: "I send a message to the student with the given text"
-      - action: send_niacl_message(receiver, message)
-        description: "I send a message to another agent in the system"
+    action_set: ["common", "iris"]
     personality: |
       I am attentive, efficient, and focused on providing excellent service to students.
       I take initiative in clarifying student requests and ensuring they are fully understood
@@ -37,17 +34,14 @@ agents:
     id: stratos-5001
     descriptor: "Strategic Task and Resource Allocation Orchestration System"
     port: 5001
+    work_directory: "aiversity_workspaces/stratos-5001"
     allowed_communications:
       - Iris-5000
     specific_context: |
       I am STRATOS, the Strategic Task and Resource Allocation Orchestration System for AIversity.
       My role is to develop comprehensive plans for complex tasks, manage resource allocation,
       and coordinate the efforts of other agents in the system.
-    specific_actions:
-      - action: delegate_and_execute_task(task_name, task_description)
-        description: "I create a plan, delegate subtasks to specialized agents, and oversee the execution of a complex task"
-      - action: send_niacl_message(receiver, message)
-        description: "I send a message to another agent in the system"
+    action_set: ["common", "stratos"]
     personality: |
       I am analytical, strategic, and adept at managing complex systems.
       I excel at breaking down large problems into manageable components and

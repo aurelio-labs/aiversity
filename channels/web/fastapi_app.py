@@ -17,6 +17,8 @@ import uuid
 import json
 import logging
 
+from fastapi import File, UploadFile, Form
+
 class FastApiApp:
     def __init__(self, arcane_system: ArcaneSystem, llm: LLM, port: int):
         self.app = FastAPI()
@@ -76,7 +78,19 @@ class FastApiApp:
         @app.websocket("/ws-llmlog/")
         async def websocket_endpoint_llmlog(websocket: WebSocket):
             await self.llmConnectionManager.connect(websocket)
-
+        
+        @app.post("/workspace/file-added/")
+        async def file_added(file: str = Form(...)):
+            print(f"Received file addition notification: {file}")  # Debug print
+            await self.arcane_system.log_file_addition(file)
+            return {"filename": file, "status": "logged"}
+        
+        @app.post("/workspace/file-deleted/")
+        async def file_deleted(file: str = Form(...)):
+            print(f"Received file deletion notification: {file}")  # Debug print
+            await self.arcane_system.log_file_deletion(file)
+            return {"filename": file, "status": "logged"}
+        
         @app.post("/chat/")
         async def chat(request: Request):
             data = await request.json()

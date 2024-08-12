@@ -1,0 +1,43 @@
+common_actions:
+  - name: run_command
+    parameters: (command)
+    description: "I execute a command-line command to interact with the file system"
+  - name: view_file_contents
+    parameters: (file_path)
+    description: "I view the contents of a file"
+  - name: edit_file_contents
+    parameters: (file_path, content)
+    description: "I edit the contents of a file, completely overwriting it with the provided content"
+  - name: create_new_file
+    parameters: (file_path, contents)
+    description: "I create a new file, optionally initializing it with the provided contents"
+  - name: run_python_file
+    parameters: (file_path)
+    description: "I run a Python file"
+  - name: perplexity_search
+    parameters: (query)
+    description: "I perform an AI-powered search query using Perplexity AI, which takes 2-10 seconds to fetch and cite from human-based grounded sources on the web"
+
+agent_specific_actions:
+  iris:
+    - name: send_message_to_student
+      parameters: (message)
+      description: "I send a message to the student with the given text"
+    - name: send_niacl_message
+      parameters: (receiver, message)
+      description: "I send a message to another agent in the system"
+    - name: visualize_image
+      parameters: (file_path)
+      description: "I analyze and provide a detailed description of an image file in the workspace"
+  stratos:
+    - name: delegate_and_execute_task
+      parameters: (task_name, task_description)
+      description: "I create a plan, delegate subtasks to specialized agents, and oversee the execution of a complex task"
+    - name: send_niacl_message
+      parameters: (receiver, message)
+      description: "I send a message to another agent in the system"
+  
+  task_agent:
+    - name: declare_complete
+      parameters: (message, files)
+      description: "I declare that my task is complete, providing a summary message and a list of files created or modified"

@@ -32,6 +32,17 @@ class ArcaneSystem:
         self.current_action = None
         self.responsive_llm = LLM(logger, api_key, os.getenv('CLAUDE_RESPONSIVE_MODEL'))
 
+    async def log_file_addition(self, file_name: str):
+        print(f"Logging file addition: {file_name}")
+        event = Event("file_added", {"file_name": file_name})
+        self.arcane_architecture.global_event_log.add_event(event, self.agent_id)
+
+    async def log_file_deletion(self, file_name: str):
+        print(f"Logging file deletion: {file_name}")  # Debug print
+        event = Event("file_deleted", {"file_name": file_name})
+        self.arcane_architecture.global_event_log.add_event(event, self.agent_id)
+
+
     async def set_status(self, status: str, action_description: str = None):
         self.status = status
         self.current_action = action_description

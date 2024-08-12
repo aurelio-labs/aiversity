@@ -11,7 +11,7 @@ from channels.communication_channel import CommunicationChannel
 import ARCANE.agent_prompting.agent_prompts as prompts
 from ARCANE.actions.action import Action
 from ARCANE.actions.triage_agent_actions import SendMessageToStratos, SendMessageToStudent
-from ARCANE.actions.file_manipulation import ViewFileContents, EditFileContents, CreateNewFile, RunPythonFile, QueryFileSystem
+from ARCANE.actions.file_manipulation import ViewFileContents, EditFileContents, CreateNewFile, RunPythonFile, QueryFileSystem, VisualizeImage
 from ARCANE.actions.send_message_to_spaceship import SendMessageToSpaceship
 from ARCANE.actions.file_manipulation import SendNIACLMessage
 from ARCANE.actions.task_agent_actions import PerplexitySearch, DeclareComplete, CreateFile, ReadFile
@@ -60,6 +60,11 @@ class GlobalEventLog:
                 narrative.append(f"[{event.timestamp}] Goal set: {event.data['goal']}")
             elif event.type == "task_execution":
                 narrative.append(f"[{event.timestamp}] Task Execution:\n{event.data['content']}. Results may still need to be communicated with agents that requested this task.")
+            elif event.type == "file_added":
+                narrative.append(f"[{event.timestamp}] User added file to workspace: {event.data['file_name']}")
+            elif event.type == "file_deleted":
+                narrative.append(f"[{event.timestamp}] File deleted from workspace: {event.data['file_name']}")
+        
         return "\n".join(narrative)
 
 class ArcaneArchitecture:
@@ -240,17 +245,19 @@ class ArcaneArchitecture:
         action_name = action_data.get("action")
         params = action_data.get("params", {})
         
+        working_directory = self.agent_config.get("work_directory", "")
         action_map = {
-            "run_command": lambda: QueryFileSystem(command=params.get("command", ""), work_directory=self.agent_config.get("work_directory", "")),
-            "view_file_contents": lambda: ViewFileContents(file_path=params.get("file_path", ""), work_directory=self.agent_config.get("work_directory", "")),
-            "edit_file_contents": lambda: EditFileContents(file_path=params.get("file_path", ""), content=params.get("content", ""), work_directory=self.agent_config.get("work_directory", "")),
-            "create_new_file": lambda: CreateNewFile(file_path=params.get("file_path", ""), work_directory=self.agent_config.get("work_directory", ""), content=params.get("contents", "")),
-            "run_python_file": lambda: RunPythonFile(file_path=params.get("file_path", ""), work_directory=self.agent_config.get("work_directory", "")),
+            "run_command": lambda: QueryFileSystem(command=params.get("command", ""), work_directory=working_directory),
+            "view_file_contents": lambda: ViewFileContents(file_path=params.get("file_path", ""), work_directory=working_directory),
+            "edit_file_contents": lambda: EditFileContents(file_path=params.get("file_path", ""), content=params.get("content", ""), work_directory=working_directory),
+            "create_new_file": lambda: CreateNewFile(file_path=params.get("file_path", ""), work_directory=working_directory, content=params.get("contents", "")),
+            "run_python_file": lambda: RunPythonFile(file_path=params.get("file_path", ""), work_directory=working_directory),
             "perplexity_search": lambda: PerplexitySearch(query=params.get("query", ""), api_key=get_environment_variable('PERPLEXITY_API_KEY')),
             "send_message_to_student": lambda: SendMessageToStudent(communication_channel=communication_channel, message=params.get("message", "")),
             "send_niacl_message": lambda: SendNIACLMessage(receiver=params.get("receiver", ""), message=params.get("message", ""), sender=self.agent_id, agent_config=self.agent_config),
             "delegate_and_execute_task": lambda: DelegateAndExecuteTask(plan_name=params.get("task_name", "Unnamed Task"), plan_description=params.get("task_description", "No Description Given"), agent_id=self.agent_id, llm=self.llm, agent_factory=self.agent_factory, stratos=self.arcane_system, logger=self.logger),
-            "declare_complete": lambda: DeclareComplete(agent_id=self.agent_id, message=params.get("message", ""), files=params.get("files", []), work_directory=self.agent_config.get("work_directory", ""))
+            "declare_complete": lambda: DeclareComplete(agent_id=self.agent_id, message=params.get("message", ""), files=params.get("files", []), work_directory=working_directory),
+            "visualize_image": lambda: VisualizeImage(file_path=params.get("file_path", ""), work_directory=working_directory)
         }
         
         if action_name in action_map:
@@ -326,6 +333,7 @@ class ArcaneArchitecture:
         """
 
     def create_system_message(self) -> str:
+        # from remote_pdb import RemotePdb; RemotePdb('0.0.0.0', 5678).set_trace()
         directory_contents = self.get_directory_contents()
         return f"""
         {self.agent_prompt}
@@ -342,18 +350,19 @@ class ArcaneArchitecture:
             # If work_directory is not set, use a default directory or return a message
             return "No specific work directory set for this agent."
 
+        # from remote_pdb import RemotePdb; RemotePdb('0.0.0.0', 5678).set_trace()
         if not os.path.exists(work_directory):
             return f"Work directory does not exist: {work_directory}"
         structure = []
-        for root, dirs, files in os.walk(self.agent_config['work_directory']):
-            level = root.replace(self.agent_config['work_directory'], '').count(os.sep)
+        for root, dirs, files in os.walk(work_directory):
+            level = root.replace(work_directory, '').count(os.sep)
             indent = ' ' * 4 * level
             structure.append(f"{indent}{os.path.basename(root)}/")
             subindent = ' ' * 4 * (level + 1)
             for f in files:
-                if f.endswith(('.py', '.yaml', '.txt', '.json', '.md', '.csv')):
+                if f.endswith(('.py', '.yaml', '.txt', '.md', '.csv')):
                     file_path = os.path.join(root, f)
-                    relative_path = os.path.relpath(file_path, self.agent_config['work_directory'])
+                    relative_path = os.path.relpath(file_path, work_directory)
                     structure.append(f"{subindent}{relative_path}")
                     with open(file_path, 'r') as file:
                         content = file.read()

@@ -5,6 +5,9 @@ import subprocess
 from typing import Tuple, Optional
 import os
 import aiohttp
+import base64
+from anthropic import Anthropic
+from util import get_environment_variable
 
 class QueryFileSystem(Action):
     def __init__(self, command: str, work_directory: str):
@@ -192,3 +195,70 @@ class SendNIACLMessage(Action):
             return int(agent_id.split('-')[-1])
         except ValueError:
             return None
+
+
+class VisualizeImage(Action):
+    def __init__(self, file_path: str, work_directory: str):
+        self.file_path = file_path
+        self.work_directory = work_directory
+        self.client = Anthropic(api_key=get_environment_variable('ANT_API_KEY'))
+
+    async def execute(self) -> Tuple[bool, Optional[str]]:
+        full_path = os.path.join(self.work_directory, self.file_path)
+        try:
+            if not os.path.exists(full_path):
+                return False, f"Error: The file '{self.file_path}' does not exist in the work directory. Please check the file path and try again."
+
+            # Read the image file and encode it to base64
+            with open(full_path, "rb") as image_file:
+                image_data = base64.b64encode(image_file.read()).decode("utf-8")
+
+            # Determine the media type based on the file extension
+            _, file_extension = os.path.splitext(self.file_path)
+            media_type = self.get_media_type(file_extension)
+
+            # Create a message request to the Anthropic API
+            message = self.client.messages.create(
+                model="claude-3-opus-20240229",
+                max_tokens=1000,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "image",
+                                "source": {
+                                    "type": "base64",
+                                    "media_type": media_type,
+                                    "data": image_data,
+                                },
+                            },
+                            {
+                                "type": "text",
+                                "text": "Provide a detailed description of this image, including its main elements, colors, composition, and any text or notable features. Your description should be thorough enough to give a clear understanding of the image contents."
+                            }
+                        ],
+                    }
+                ],
+            )
+
+            # Extract the response from the API
+            description = message.content[0].text if message.content else "No description available."
+            return True, f"Image visualization for '{self.file_path}':\n\n{description}"
+
+        except Exception as e:
+            return False, f"Error visualizing image '{self.file_path}': {str(e)}. This might be due to an unsupported file format or issues with the image analysis service."
+
+    def get_media_type(self, file_extension: str) -> str:
+        media_types = {
+            '.jpg': 'image/jpeg',
+            '.jpeg': 'image/jpeg',
+            '.png': 'image/png',
+            '.gif': 'image/gif',
+            '.bmp': 'image/bmp',
+            '.webp': 'image/webp'
+        }
+        return media_types.get(file_extension.lower(), 'application/octet-stream')
+
+    def __str__(self):
+        return f"Visualize Image: {self.file_path} (Directory: {self.work_directory})"

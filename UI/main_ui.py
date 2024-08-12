@@ -3,7 +3,7 @@ import os
 import asyncio
 import json
 import aiohttp
-from aiohttp import ClientSession
+from aiohttp import ClientSession, FormData
 import qasync
 from PyQt5.QtWidgets import (QApplication, QWidget, QVBoxLayout, QHBoxLayout, 
                              QListWidget, QLabel, QTextBrowser, QLineEdit, 
@@ -27,6 +27,8 @@ class AutoScrollTextBrowser(QTextBrowser):
         self.verticalScrollBar().setValue(self.verticalScrollBar().maximum())
 
 class CustomListWidget(QListWidget):
+    fileDeleted = pyqtSignal(str)  # New signal
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setStyleSheet("""
@@ -54,7 +56,11 @@ class CustomListWidget(QListWidget):
 
     def delete_selected_items(self):
         for item in self.selectedItems():
+            file_name = item.text()
             self.takeItem(self.row(item))
+            self.fileDeleted.emit(file_name)  # Emit signal instead of directly calling the method
+
+
 
 class SharedWorkspace(QWidget):
     actionReceived = pyqtSignal(list)
@@ -113,6 +119,7 @@ class SharedWorkspace(QWidget):
         scroll_area.setStyleSheet("border: none;")
 
         self.list_widget = CustomListWidget()
+        self.list_widget.fileDeleted.connect(self.on_file_deleted)  # Connect the signal to a slot
         self.setup_list_widget()
 
         scroll_area.setWidget(self.list_widget)
@@ -251,6 +258,34 @@ class SharedWorkspace(QWidget):
             shutil.copy2(file, destination)
             print("Copied " + file)
             print("to " + destination)
+            asyncio.create_task(self.notify_backend_file_added(os.path.basename(file)))
+
+    async def notify_backend_file_added(self, file_name):
+        url = "http://localhost:5000/workspace/file-added/"
+        async with aiohttp.ClientSession() as session:
+            data = FormData()
+            data.add_field('file', file_name)  # Only sending the file name, not the contents
+            async with session.post(url, data=data) as response:
+                if response.status == 200:
+                    print(f"Backend notified about file addition: {file_name}")
+                else:
+                    print(f"Failed to notify backend about file addition: {file_name}. Status: {response.status}")
+
+    def on_file_deleted(self, file_name):
+        asyncio.create_task(self.notify_backend_file_deleted(file_name))
+
+    async def notify_backend_file_deleted(self, file_name):
+        url = "http://localhost:5000/workspace/file-deleted/"
+        async with aiohttp.ClientSession() as session:
+            data = FormData()
+            data.add_field('file', file_name)
+            async with session.post(url, data=data) as response:
+                if response.status == 200:
+                    print(f"Backend notified about file deletion: {file_name}")
+                else:
+                    print(f"Failed to notify backend about file deletion: {file_name}. Status: {response.status}")
+                    response_text = await response.text()
+                    print(f"Response: {response_text}")
 
     def truncate_filename(self, filename, max_length=20, start_chars=10, end_chars=5):
         if len(filename) > max_length:
