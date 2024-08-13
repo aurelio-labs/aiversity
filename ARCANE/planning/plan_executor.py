@@ -9,7 +9,7 @@ import logging
 import os
 import json
 
-MAX_AGENT_ACTIONS = 15
+MAX_AGENT_ACTIONS = 5
 
 
 class PlanExecutor:

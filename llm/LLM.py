@@ -48,14 +48,49 @@ class LLM:
             json.dump(log_data, f, indent=2)
 
     async def create_chat_completion(
-        self, system_message: str, user_message: str, tool_config: Dict[str, Any]
+        self, system_message: str, user_message: str, tool_config: Dict[str, Any] = None
     ) -> Dict[str, Any]:
         conversation = [
             {"role": "system", "content": system_message},
             {"role": "user", "content": user_message},
         ]
-        return await self.create_conversation_completion(conversation, tool_config)
+        if tool_config:
+            return await self.create_conversation_completion(conversation, tool_config)
+        else:
+            return await self.create_standard_chat_completion(conversation)
 
+    async def create_standard_chat_completion(
+        self, conversation: List[Dict[str, str]], max_tokens: int = 4000
+    ) -> str:
+        messages = [
+            {
+                "role": "assistant" if msg["role"] == "system" else msg["role"],
+                "content": msg["content"],
+            }
+            for msg in conversation
+        ]
+
+        if messages[0]["role"] != "user":
+            messages.insert(0, {"role": "user", "content": "Hello!"})
+
+        request = {
+            "model": self.model,
+            "messages": messages,
+            "max_tokens": max_tokens,
+        }
+
+        try:
+            response = self.client.messages.create(**request)
+            content = response.content[0].text if response.content else ""
+            
+            self.log_request_response(request, response.dict(), True)
+            return content
+
+        except Exception as e:
+            self.logging.error(f"Error processing response content: {e}")
+            self.log_request_response(request, str(e), False)
+            return None
+    
     async def create_conversation_completion(
         self, conversation: List[Dict[str, str]], tool_config: Dict[str, Any]
     ) -> Dict[str, Any]:

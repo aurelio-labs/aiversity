@@ -5,6 +5,7 @@ from ARCANE.actions.action import Action
 from ARCANE.planning.plan_structures import Plan, Level, Task
 from ARCANE.planning.plan_persistence import PlanPersistence
 from ARCANE.planning.plan_executor import PlanExecutor
+from util import get_environment_variable
 from llm.LLM import LLM
 import logging
 import os
@@ -32,6 +33,8 @@ class DelegateAndExecuteTask(Action):
         self.plan_persistence = PlanPersistence(
             os.path.join(self.workspace_root, "plans")
         )
+        self.responsive_llm = LLM(logger, get_environment_variable("ANT_API_KEY"), get_environment_variable("CLAUDE_RESPONSIVE_MODEL"))
+
 
     async def execute(self) -> Tuple[bool, Optional[str]]:
         try:
@@ -47,15 +50,39 @@ class DelegateAndExecuteTask(Action):
             executor = PlanExecutor(
                 plan, self.agent_factory, self.stratos, self.llm, self.logger
             )
-            collective_narrative = await executor.execute_plan()
 
-            # Generate a detailed summary message
-            summary_message = (
-                f"Task '{plan.name}' was delegated and executed successfully. "
-                f"Description: {plan.description}\n\n"
-                f"Execution Details:\n{collective_narrative}\n\n"
-                f"This task was broken down into subtasks and executed by specialized agents."
+            collective_narrative = await executor.execute_plan()
+            
+            # Create a summarization prompt
+            summarization_prompt = f"""
+            Task Name: {plan.name}
+            Task Description: {plan.description}
+
+            You are an AI assistant tasked with summarizing the execution of a complex task. 
+            The full execution log is provided below. Your job is to create a concise yet 
+            informative summary of the task execution, highlighting key steps, decisions, 
+            and outcomes. Focus on the most important aspects and avoid unnecessary details.
+
+            Execution Log:
+            {collective_narrative}
+
+            Please provide a summary of the task execution in about 200-300 words.
+            """
+            
+            summarized_narrative = await self.responsive_llm.create_chat_completion(
+                summarization_prompt, 
+                "Summarize the task execution."
             )
+
+            if summarized_narrative:
+                summary_message = (
+                    f"Task '{plan.name}' was delegated and executed successfully. "
+                    f"Description: {plan.description}\n\n"
+                    f"Execution Summary:\n{summarized_narrative}\n\n"
+                    f"This task was broken down into subtasks and executed by specialized agents."
+                )
+            else:
+                summary_message = "Error: Unable to generate summary."
 
             return True, summary_message
         except Exception as e:
