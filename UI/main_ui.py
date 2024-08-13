@@ -5,14 +5,27 @@ import json
 import aiohttp
 from aiohttp import ClientSession, FormData
 import qasync
-from PyQt5.QtWidgets import (QApplication, QWidget, QVBoxLayout, QHBoxLayout, 
-                             QListWidget, QLabel, QTextBrowser, QLineEdit, 
-                             QPushButton, QSplitter, QListWidgetItem, 
-                             QFileIconProvider, QAbstractItemView, QScrollArea)
+from PyQt5.QtWidgets import (
+    QApplication,
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QListWidget,
+    QLabel,
+    QTextBrowser,
+    QLineEdit,
+    QPushButton,
+    QSplitter,
+    QListWidgetItem,
+    QFileIconProvider,
+    QAbstractItemView,
+    QScrollArea,
+)
 from PyQt5.QtCore import Qt, QFileInfo, QSize, QDateTime, QTimer, pyqtSignal
 from PyQt5.QtGui import QIcon, QPixmap, QColor, QPalette
 import uuid
 import shutil
+
 
 class AutoScrollTextBrowser(QTextBrowser):
     def __init__(self, parent=None):
@@ -26,12 +39,14 @@ class AutoScrollTextBrowser(QTextBrowser):
     def scroll_to_bottom(self):
         self.verticalScrollBar().setValue(self.verticalScrollBar().maximum())
 
+
 class CustomListWidget(QListWidget):
     fileDeleted = pyqtSignal(str)  # New signal
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setStyleSheet("""
+        self.setStyleSheet(
+            """
             QListWidget {
                 background-color: #2B2B2B;
                 border: 1px solid #444444;
@@ -46,7 +61,8 @@ class CustomListWidget(QListWidget):
             QListWidget::item:selected {
                 background-color: #444444;
             }
-        """)
+        """
+        )
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Delete:
@@ -58,8 +74,9 @@ class CustomListWidget(QListWidget):
         for item in self.selectedItems():
             file_name = item.text()
             self.takeItem(self.row(item))
-            self.fileDeleted.emit(file_name)  # Emit signal instead of directly calling the method
-
+            self.fileDeleted.emit(
+                file_name
+            )  # Emit signal instead of directly calling the method
 
 
 class SharedWorkspace(QWidget):
@@ -111,7 +128,9 @@ class SharedWorkspace(QWidget):
         workspace_layout.setSpacing(10)
 
         workspace_label = QLabel("Shared Workspace")
-        workspace_label.setStyleSheet("font-size: 16px; font-weight: bold; color: #FFFFFF; margin-bottom: 10px;")
+        workspace_label.setStyleSheet(
+            "font-size: 16px; font-weight: bold; color: #FFFFFF; margin-bottom: 10px;"
+        )
         workspace_layout.addWidget(workspace_label)
 
         scroll_area = QScrollArea()
@@ -119,7 +138,9 @@ class SharedWorkspace(QWidget):
         scroll_area.setStyleSheet("border: none;")
 
         self.list_widget = CustomListWidget()
-        self.list_widget.fileDeleted.connect(self.on_file_deleted)  # Connect the signal to a slot
+        self.list_widget.fileDeleted.connect(
+            self.on_file_deleted
+        )  # Connect the signal to a slot
         self.setup_list_widget()
 
         scroll_area.setWidget(self.list_widget)
@@ -127,7 +148,8 @@ class SharedWorkspace(QWidget):
 
         delete_button = QPushButton("Delete Selected")
         delete_button.setIcon(QIcon("delete.png"))
-        delete_button.setStyleSheet("""
+        delete_button.setStyleSheet(
+            """
             QPushButton {
                 background-color: #FF4136;
                 color: #FFFFFF;
@@ -140,12 +162,15 @@ class SharedWorkspace(QWidget):
             QPushButton:hover {
                 background-color: #FF725C;
             }
-        """)
+        """
+        )
         delete_button.clicked.connect(self.list_widget.delete_selected_items)
         workspace_layout.addWidget(delete_button)
 
         workspace_widget.setLayout(workspace_layout)
-        workspace_widget.setStyleSheet("background-color: #333333; border-radius: 10px; padding: 10px;")
+        workspace_widget.setStyleSheet(
+            "background-color: #333333; border-radius: 10px; padding: 10px;"
+        )
         return workspace_widget
 
     def setup_list_widget(self):
@@ -163,11 +188,14 @@ class SharedWorkspace(QWidget):
         chat_layout.setSpacing(10)
 
         chat_label = QLabel("Chat with Triage Agent")
-        chat_label.setStyleSheet("font-size: 16px; font-weight: bold; color: #FFFFFF; margin-bottom: 10px;")
+        chat_label.setStyleSheet(
+            "font-size: 16px; font-weight: bold; color: #FFFFFF; margin-bottom: 10px;"
+        )
         chat_layout.addWidget(chat_label)
 
         self.chat_history = AutoScrollTextBrowser()
-        self.chat_history.setStyleSheet("""
+        self.chat_history.setStyleSheet(
+            """
             QTextBrowser {
                 background-color: #2B2B2B;
                 color: #FFFFFF;
@@ -176,13 +204,15 @@ class SharedWorkspace(QWidget):
                 padding: 10px;
                 font-size: 14px;
             }
-        """)
+        """
+        )
         chat_layout.addWidget(self.chat_history)
 
         input_layout = QHBoxLayout()
         self.chat_input = QLineEdit()
         self.chat_input.setPlaceholderText("Type your message...")
-        self.chat_input.setStyleSheet("""
+        self.chat_input.setStyleSheet(
+            """
             QLineEdit {
                 background-color: #444444;
                 color: #FFFFFF;
@@ -191,13 +221,15 @@ class SharedWorkspace(QWidget):
                 font-size: 14px;
                 border-radius: 5px;
             }
-        """)
+        """
+        )
         self.chat_input.returnPressed.connect(self.send_message)
         input_layout.addWidget(self.chat_input)
 
         send_button = QPushButton("Send")
         send_button.setIcon(QIcon("send.png"))
-        send_button.setStyleSheet("""
+        send_button.setStyleSheet(
+            """
             QPushButton {
                 background-color: #2ECC40;
                 color: #FFFFFF;
@@ -210,20 +242,25 @@ class SharedWorkspace(QWidget):
             QPushButton:hover {
                 background-color: #01FF70;
             }
-        """)
+        """
+        )
         send_button.clicked.connect(self.send_message)
         input_layout.addWidget(send_button)
 
         chat_layout.addLayout(input_layout)
 
         chat_widget.setLayout(chat_layout)
-        chat_widget.setStyleSheet("background-color: #333333; border-radius: 10px; padding: 10px;")
+        chat_widget.setStyleSheet(
+            "background-color: #333333; border-radius: 10px; padding: 10px;"
+        )
         return chat_widget
 
     def setup_animations(self):
         self.processing_animation_timer = QTimer()
-        self.processing_animation_timer.timeout.connect(self.update_processing_animation)
-        self.processing_animation_frames = ['|', '/', '-', '\\']
+        self.processing_animation_timer.timeout.connect(
+            self.update_processing_animation
+        )
+        self.processing_animation_frames = ["|", "/", "-", "\\"]
         self.current_frame_index = 0
 
     def dragEnterEvent(self, event):
@@ -241,9 +278,11 @@ class SharedWorkspace(QWidget):
 
             if file_info.isDir():
                 icon = icon_provider.icon(QFileIconProvider.Folder)
-            elif file_info.suffix().lower() in ['png', 'jpg', 'jpeg', 'gif', 'bmp']:
+            elif file_info.suffix().lower() in ["png", "jpg", "jpeg", "gif", "bmp"]:
                 pixmap = QPixmap(file)
-                icon = QIcon(pixmap.scaled(64, 64, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+                icon = QIcon(
+                    pixmap.scaled(64, 64, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                )
             else:
                 icon = icon_provider.icon(file_info)
 
@@ -252,7 +291,7 @@ class SharedWorkspace(QWidget):
 
             # Copy the file to the agent's workspace
             pwd = os.path.dirname(os.getcwd())
-            agent_workspace = os.path.join(pwd, 'aiversity_workspaces', "Iris-5000")
+            agent_workspace = os.path.join(pwd, "aiversity_workspaces", "Iris-5000")
             os.makedirs(agent_workspace, exist_ok=True)
             destination = os.path.join(agent_workspace, os.path.basename(file))
             shutil.copy2(file, destination)
@@ -264,12 +303,16 @@ class SharedWorkspace(QWidget):
         url = "http://localhost:5000/workspace/file-added/"
         async with aiohttp.ClientSession() as session:
             data = FormData()
-            data.add_field('file', file_name)  # Only sending the file name, not the contents
+            data.add_field(
+                "file", file_name
+            )  # Only sending the file name, not the contents
             async with session.post(url, data=data) as response:
                 if response.status == 200:
                     print(f"Backend notified about file addition: {file_name}")
                 else:
-                    print(f"Failed to notify backend about file addition: {file_name}. Status: {response.status}")
+                    print(
+                        f"Failed to notify backend about file addition: {file_name}. Status: {response.status}"
+                    )
 
     def on_file_deleted(self, file_name):
         asyncio.create_task(self.notify_backend_file_deleted(file_name))
@@ -278,12 +321,14 @@ class SharedWorkspace(QWidget):
         url = "http://localhost:5000/workspace/file-deleted/"
         async with aiohttp.ClientSession() as session:
             data = FormData()
-            data.add_field('file', file_name)
+            data.add_field("file", file_name)
             async with session.post(url, data=data) as response:
                 if response.status == 200:
                     print(f"Backend notified about file deletion: {file_name}")
                 else:
-                    print(f"Failed to notify backend about file deletion: {file_name}. Status: {response.status}")
+                    print(
+                        f"Failed to notify backend about file deletion: {file_name}. Status: {response.status}"
+                    )
                     response_text = await response.text()
                     print(f"Response: {response_text}")
 
@@ -293,15 +338,17 @@ class SharedWorkspace(QWidget):
         return filename
 
     def update_processing_animation(self):
-        self.current_frame_index = (self.current_frame_index + 1) % len(self.processing_animation_frames)
+        self.current_frame_index = (self.current_frame_index + 1) % len(
+            self.processing_animation_frames
+        )
         current_frame = self.processing_animation_frames[self.current_frame_index]
 
         cursor = self.chat_history.textCursor()
         cursor.movePosition(cursor.End)
-        
+
         cursor.movePosition(cursor.StartOfBlock, cursor.KeepAnchor)
         selected_text = cursor.selectedText()
-        
+
         animation_start = selected_text.find("Processing ")
         if animation_start != -1:
             new_text = f"{selected_text[:animation_start]}Processing {current_frame}"
@@ -309,7 +356,9 @@ class SharedWorkspace(QWidget):
             cursor.insertHtml(new_text)
         else:
             cursor.movePosition(cursor.End)
-            cursor.insertHtml(f"<br><span style='color: #FFFFFF;'>Processing {current_frame}</span>")
+            cursor.insertHtml(
+                f"<br><span style='color: #FFFFFF;'>Processing {current_frame}</span>"
+            )
 
         self.chat_history.ensureCursorVisible()
 
@@ -319,7 +368,7 @@ class SharedWorkspace(QWidget):
         try:
             response_data = json.loads(response_message)
             message_type = response_data.get("type", "agent_message")
-            
+
             if message_type == "execution_update":
                 self.display_execution_update(response_data["data"])
             elif message_type == "agent_message":
@@ -333,7 +382,9 @@ class SharedWorkspace(QWidget):
         self.chat_history.ensureCursorVisible()
 
     def display_execution_update(self, update_message):
-        formatted_message = f"<span style='color: #808080; margin-left: 20px;'>{update_message}</span>"
+        formatted_message = (
+            f"<span style='color: #808080; margin-left: 20px;'>{update_message}</span>"
+        )
         self.chat_history.append(formatted_message)
 
     def display_agent_message(self, message_data):
@@ -366,23 +417,32 @@ class SharedWorkspace(QWidget):
                     if message.type == aiohttp.WSMsgType.TEXT:
                         print(f"Received message: {message.data}")  # Debug print
                         data = json.loads(message.data)
-                        if 'type' in data and data['type'] == 'execution_update':
-                            print(f"Execution update received: {data['data']}")  # Debug print
+                        if "type" in data and data["type"] == "execution_update":
+                            print(
+                                f"Execution update received: {data['data']}"
+                            )  # Debug print
                             self.triage_agent_response(json.dumps(data))
-                        elif 'content' in data:
-                            self.triage_agent_response(data['content'])
+                        elif "content" in data:
+                            self.triage_agent_response(data["content"])
                     elif message.type == aiohttp.WSMsgType.CLOSED:
                         break
                     elif message.type == aiohttp.WSMsgType.ERROR:
-                        print("WebSocket connection closed with exception:", websocket.exception())
+                        print(
+                            "WebSocket connection closed with exception:",
+                            websocket.exception(),
+                        )
                         break
 
     def send_message(self):
         message = self.chat_input.text().strip()
         if message:
             timestamp = QDateTime.currentDateTime().toString("yyyy-MM-dd HH:mm:ss")
-            self.chat_history.append(f"<span style='color: #7FDBFF;'>[{timestamp}] User:</span> {message}")
-            self.chat_history.append(f"<span style='color: #FFFFFF;'>Processing {self.processing_animation_frames[0]}</span>")
+            self.chat_history.append(
+                f"<span style='color: #7FDBFF;'>[{timestamp}] User:</span> {message}"
+            )
+            self.chat_history.append(
+                f"<span style='color: #FFFFFF;'>Processing {self.processing_animation_frames[0]}</span>"
+            )
             asyncio.create_task(self.send_message_to_backend(message))
             self.chat_input.clear()
             self.processing_animation_timer.start(100)
@@ -390,15 +450,16 @@ class SharedWorkspace(QWidget):
     async def send_message_to_backend(self, message):
         url = "http://localhost:5000/chat/"
         async with ClientSession() as session:
-            async with session.post(url, json={"message": message, "user_id": self.user_id}) as response:
+            async with session.post(
+                url, json={"message": message, "user_id": self.user_id}
+            ) as response:
                 if response.status == 200:
                     data = await response.json()
                     print(f"Message sent successfully. User ID: {data['user_id']}")
-                    if 'actions' in data:
-                        self.actionReceived.emit(data['actions'])
+                    if "actions" in data:
+                        self.actionReceived.emit(data["actions"])
                 else:
                     print(f"Failed to send message. Status: {response.status}")
-
 
 
 class ActionListWindow(QWidget):
@@ -415,7 +476,9 @@ class ActionListWindow(QWidget):
         layout.setSpacing(10)
 
         action_label = QLabel("Agent Actions")
-        action_label.setStyleSheet("font-size: 16px; font-weight: bold; color: #FFFFFF; margin-bottom: 10px;")
+        action_label.setStyleSheet(
+            "font-size: 16px; font-weight: bold; color: #FFFFFF; margin-bottom: 10px;"
+        )
         layout.addWidget(action_label)
 
         self.action_list = CustomListWidget()
@@ -447,9 +510,10 @@ class ActionListWindow(QWidget):
             action_str += f"Params: {json.dumps(action.get('params', {}), indent=2)}\n"
             action_str += f"Success: {action.get('success', 'Unknown')}\n"
             action_str += f"Result: {action.get('result', 'Unknown')}\n"
-            
+
             item = QListWidgetItem(action_str)
             self.action_list.addItem(item)
+
 
 async def main():
     app = QApplication(sys.argv)
@@ -471,6 +535,7 @@ async def main():
     with loop:
         loop.create_task(workspace.receive_messages())
         loop.run_forever()
+
 
 if __name__ == "__main__":
     asyncio.run(main())

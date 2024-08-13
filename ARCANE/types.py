@@ -13,7 +13,7 @@ class ChatMessage(TypedDict):
 
 def create_chat_message(sender: str, content: str) -> ChatMessage:
     now_utc = datetime.now(timezone.utc)
-    formatted_time = now_utc.strftime('%Y-%m-%dT%H:%M:%SZ')
+    formatted_time = now_utc.strftime("%Y-%m-%dT%H:%M:%SZ")
     return {"sender": sender, "content": content, "time_utc": formatted_time}
 
 
@@ -32,10 +32,7 @@ class Memory(TypedDict):
 
 
 def create_memory(content: str) -> Memory:
-    return {
-        "time_utc": datetime.now(timezone.utc).isoformat(),
-        "content": content
-    }
+    return {"time_utc": datetime.now(timezone.utc).isoformat(), "content": content}
 
 
 LayerState = Dict[str, str]

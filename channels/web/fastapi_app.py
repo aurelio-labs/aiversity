@@ -19,6 +19,7 @@ import logging
 
 from fastapi import File, UploadFile, Form
 
+
 class FastApiApp:
     def __init__(self, arcane_system: ArcaneSystem, llm: LLM, port: int):
         self.app = FastAPI()
@@ -49,7 +50,9 @@ class FastApiApp:
     async def custom_exception_handler(self, request: Request, exc: Exception):
         traceback_str = traceback.format_exc()
         print(traceback_str)
-        return JSONResponse(content={"error": str(exc), "traceback": traceback_str}, status_code=500)
+        return JSONResponse(
+            content={"error": str(exc), "traceback": traceback_str}, status_code=500
+        )
 
     async def llm_completion_listener(self, completion: ChatCompletion):
         # Broadcast the completion to all connected clients
@@ -78,76 +81,113 @@ class FastApiApp:
         @app.websocket("/ws-llmlog/")
         async def websocket_endpoint_llmlog(websocket: WebSocket):
             await self.llmConnectionManager.connect(websocket)
-        
+
         @app.post("/workspace/file-added/")
         async def file_added(file: str = Form(...)):
             print(f"Received file addition notification: {file}")  # Debug print
             await self.arcane_system.log_file_addition(file)
             return {"filename": file, "status": "logged"}
-        
+
         @app.post("/workspace/file-deleted/")
         async def file_deleted(file: str = Form(...)):
             print(f"Received file deletion notification: {file}")  # Debug print
             await self.arcane_system.log_file_deletion(file)
             return {"filename": file, "status": "logged"}
-        
+
         @app.post("/chat/")
         async def chat(request: Request):
             data = await request.json()
-            message = data.get('message', '')
-            user_id = data.get('user_id', str(uuid.uuid4()))
+            message = data.get("message", "")
+            user_id = data.get("user_id", str(uuid.uuid4()))
             messages: [ChatMessage] = [create_chat_message("api-user", message)]
-            communication_channel = WebCommunicationChannel(messages, self.chatConnectionManager, self.arcane_system, user_id)
+            communication_channel = WebCommunicationChannel(
+                messages, self.chatConnectionManager, self.arcane_system, user_id
+            )
 
             try:
-                narrative, executed_actions = await self.arcane_system.process_incoming_user_message(communication_channel, user_id)
+                narrative, executed_actions = (
+                    await self.arcane_system.process_incoming_user_message(
+                        communication_channel, user_id
+                    )
+                )
                 # Log the narrative (for debugging or admin purposes)
                 logging.debug(f"Narrative for user {user_id}: {narrative}")
-                return JSONResponse(content={"success": True, "user_id": user_id}, status_code=200)
+                return JSONResponse(
+                    content={"success": True, "user_id": user_id}, status_code=200
+                )
             except Exception as e:
                 traceback_str = traceback.format_exc()
                 logging.error(traceback_str)
-                await self.send_message_to_frontend(user_id, f"An error occurred: {str(e)}")
-                return JSONResponse(content={"success": False, "error": str(e)}, status_code=500)
-            
+                await self.send_message_to_frontend(
+                    user_id, f"An error occurred: {str(e)}"
+                )
+                return JSONResponse(
+                    content={"success": False, "error": str(e)}, status_code=500
+                )
+
         @app.post("/agent-message/")
         async def agent_message(request: Request):
             data = await request.json()
-            message = data.get('message', '')
-            sender = data.get('sender', '')
-            
-            print(f"Received agent message from {sender}: {message[:50]}...")  # Add this line
-            
-            await self.arcane_system.log_agent_message(sender, message)
-            
-            try:
-                narrative, executed_actions = await self.arcane_system.process_incoming_agent_message(sender, message)
-                print(f"Processed agent message from {sender}. Actions: {len(executed_actions)}")  # Add this line
-                return JSONResponse(content={"success": True, "sender": sender}, status_code=200)
-            except Exception as e:
-                print(f"Error processing agent message from {sender}: {str(e)}")  # Add this line
-                return JSONResponse(content={"success": False, "error": str(e)}, status_code=500)
+            message = data.get("message", "")
+            sender = data.get("sender", "")
 
+            print(
+                f"Received agent message from {sender}: {message[:50]}..."
+            )  # Add this line
+
+            await self.arcane_system.log_agent_message(sender, message)
+
+            try:
+                narrative, executed_actions = (
+                    await self.arcane_system.process_incoming_agent_message(
+                        sender, message
+                    )
+                )
+                print(
+                    f"Processed agent message from {sender}. Actions: {len(executed_actions)}"
+                )  # Add this line
+                return JSONResponse(
+                    content={"success": True, "sender": sender}, status_code=200
+                )
+            except Exception as e:
+                print(
+                    f"Error processing agent message from {sender}: {str(e)}"
+                )  # Add this line
+                return JSONResponse(
+                    content={"success": False, "error": str(e)}, status_code=500
+                )
 
         @app.get("/chat/")
         async def chat_get(message: str, user_id: str = None):
             if not message:
-                raise HTTPException(status_code=400, detail="message parameter is required")
+                raise HTTPException(
+                    status_code=400, detail="message parameter is required"
+                )
             if not user_id:
                 user_id = str(uuid.uuid4())
             messages = [create_chat_message("api-user", message)]
-            communication_channel = WebCommunicationChannel(messages, self.chatConnectionManager, self.arcane_system, user_id)
+            communication_channel = WebCommunicationChannel(
+                messages, self.chatConnectionManager, self.arcane_system, user_id
+            )
 
             try:
-                narrative, executed_actions = await self.arcane_system.process_incoming_user_message(communication_channel, user_id)
+                narrative, executed_actions = (
+                    await self.arcane_system.process_incoming_user_message(
+                        communication_channel, user_id
+                    )
+                )
                 # Log the narrative (for debugging or admin purposes)
                 self.logger.debug(f"Narrative for user {user_id}: {narrative}")
-                return f"Message processed by {self.arcane_system.name} for user {user_id}"
+                return (
+                    f"Message processed by {self.arcane_system.name} for user {user_id}"
+                )
             except Exception as e:
                 traceback_str = traceback.format_exc()
                 self.logger.error(traceback_str)
-                return JSONResponse(content={"error": str(e), "traceback": traceback_str}, status_code=400)
-
+                return JSONResponse(
+                    content={"error": str(e), "traceback": traceback_str},
+                    status_code=400,
+                )
 
         @app.get("/llmlog/")
         async def get_llm_completions():
@@ -157,16 +197,20 @@ class FastApiApp:
         def root():
             return f'<html>{self.arcane_system.name} SYSTEM RESPONSE: The backend is up and running! <a href="chat?message=hi">/chat?message=hi</a></html>'
 
-
     async def process_websocket_message(self, user_id: str, message: str):
         messages: [ChatMessage] = [create_chat_message("api-user", message)]
-        communication_channel = WebCommunicationChannel(messages, self.chatConnectionManager, self.arcane_system, user_id)
-        narrative, executed_actions = await self.arcane_system.process_incoming_user_message(communication_channel, user_id)
-        
+        communication_channel = WebCommunicationChannel(
+            messages, self.chatConnectionManager, self.arcane_system, user_id
+        )
+        narrative, executed_actions = (
+            await self.arcane_system.process_incoming_user_message(
+                communication_channel, user_id
+            )
+        )
+
         # Log the narrative (for debugging or admin purposes)
         logging.debug(f"Narrative for user {user_id}: {narrative}")
 
-        
         # # Send the processed response and actions
         # await self.chatConnectionManager.send_message(user_id, create_chat_message(self.arcane_system.name, processed_response))
         # await self.chatConnectionManager.send_actions(user_id, actions)
@@ -177,8 +221,8 @@ class FastApiApp:
                 actions = json.loads(response)
                 if isinstance(actions, list):
                     for action in actions:
-                        if action.get('action') == 'send_message_to_student':
-                            return action.get('message', '')
+                        if action.get("action") == "send_message_to_student":
+                            return action.get("message", "")
                 return response  # Return original if not expected format
             except json.JSONDecodeError:
                 return response  # Return original if not valid JSON
@@ -188,9 +232,11 @@ class FastApiApp:
         self.llm.add_completion_listener(self.llm_completion_listener)
 
     async def run(self):
-        config = Config(app=self.app, host="localhost", port=self.port, log_level="error")
+        config = Config(
+            app=self.app, host="localhost", port=self.port, log_level="error"
+        )
         self.server = Server(config=config)
-        
+
         self.should_exit.clear()
         await self.server.serve()
 

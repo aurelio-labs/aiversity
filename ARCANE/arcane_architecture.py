@@ -10,17 +10,38 @@ from llm.LLM import LLM
 from channels.communication_channel import CommunicationChannel
 import ARCANE.agent_prompting.agent_prompts as prompts
 from ARCANE.actions.action import Action
-from ARCANE.actions.triage_agent_actions import SendMessageToStratos, SendMessageToStudent
-from ARCANE.actions.file_manipulation import ViewFileContents, EditFileContents, CreateNewFile, RunPythonFile, QueryFileSystem, VisualizeImage
+from ARCANE.actions.triage_agent_actions import (
+    SendMessageToStratos,
+    SendMessageToStudent,
+)
+from ARCANE.actions.file_manipulation import (
+    ViewFileContents,
+    EditFileContents,
+    CreateNewFile,
+    RunPythonFile,
+    QueryFileSystem,
+    VisualizeImage,
+)
 from ARCANE.actions.send_message_to_spaceship import SendMessageToSpaceship
 from ARCANE.actions.file_manipulation import SendNIACLMessage
-from ARCANE.actions.task_agent_actions import PerplexitySearch, DeclareComplete, CreateFile, ReadFile
+from ARCANE.actions.task_agent_actions import (
+    PerplexitySearch,
+    DeclareComplete,
+    CreateFile,
+    ReadFile,
+)
 
 from ARCANE.planning.stratos_planning import DelegateAndExecuteTask
 import os
 
+
 class Event:
-    def __init__(self, event_type: str, data: Dict[str, Any], timestamp: Optional[datetime] = None):
+    def __init__(
+        self,
+        event_type: str,
+        data: Dict[str, Any],
+        timestamp: Optional[datetime] = None,
+    ):
         self.id = str(uuid.uuid4())
         self.type = event_type
         self.data = data
@@ -31,8 +52,9 @@ class Event:
             "id": self.id,
             "type": self.type,
             "data": self.data,
-            "timestamp": self.timestamp.isoformat()
+            "timestamp": self.timestamp.isoformat(),
         }
+
 
 class GlobalEventLog:
     def __init__(self):
@@ -51,24 +73,42 @@ class GlobalEventLog:
             if event.type == "user_message":
                 narrative.append(f"[{event.timestamp}] User: {event.data['content']}")
             elif event.type == "agent_message":
-                sender = event.data.get('sender', 'Unknown Agent')
-                narrative.append(f"[{event.timestamp}] Agent {sender}: {event.data['content']}")
+                sender = event.data.get("sender", "Unknown Agent")
+                narrative.append(
+                    f"[{event.timestamp}] Agent {sender}: {event.data['content']}"
+                )
             elif event.type == "agent_action":
                 action_data = json.dumps(event.data, indent=2)
                 narrative.append(f"[{event.timestamp}] Agent action:\n{action_data}")
             elif event.type == "goal_set":
                 narrative.append(f"[{event.timestamp}] Goal set: {event.data['goal']}")
             elif event.type == "task_execution":
-                narrative.append(f"[{event.timestamp}] Task Execution:\n{event.data['content']}. Results may still need to be communicated with agents that requested this task.")
+                narrative.append(
+                    f"[{event.timestamp}] Task Execution:\n{event.data['content']}. Results may still need to be communicated with agents that requested this task."
+                )
             elif event.type == "file_added":
-                narrative.append(f"[{event.timestamp}] User added file to workspace: {event.data['file_name']}")
+                narrative.append(
+                    f"[{event.timestamp}] User added file to workspace: {event.data['file_name']}"
+                )
             elif event.type == "file_deleted":
-                narrative.append(f"[{event.timestamp}] File deleted from workspace: {event.data['file_name']}")
-        
+                narrative.append(
+                    f"[{event.timestamp}] File deleted from workspace: {event.data['file_name']}"
+                )
+
         return "\n".join(narrative)
 
+
 class ArcaneArchitecture:
-    def __init__(self, llm: LLM, logger: logging.Logger, agent_id: str, agent_prompt: str, agent_config: dict, arcane_system, agent_factory):
+    def __init__(
+        self,
+        llm: LLM,
+        logger: logging.Logger,
+        agent_id: str,
+        agent_prompt: str,
+        agent_config: dict,
+        arcane_system,
+        agent_factory,
+    ):
         self.llm = llm
         self.logger = logger
         self.agent_id = agent_id
@@ -79,8 +119,7 @@ class ArcaneArchitecture:
         self.arcane_system = arcane_system
         self.agent_factory = agent_factory
         importlib.reload(prompts)
-        self.is_core_agent = agent_id in ['iris-5000', 'stratos-5001']
-
+        self.is_core_agent = agent_id in ["iris-5000", "stratos-5001"]
 
     async def send_niacl_message(self, receiver: str, message: str) -> Tuple[bool, str]:
         action = SendNIACLMessage(receiver, message, self.agent_id, self.agent_config)
@@ -90,24 +129,26 @@ class ArcaneArchitecture:
         # from remote_pdb import RemotePdb; RemotePdb('0.0.0.0', 5678).set_trace()
         narrative = self.global_event_log.to_narrative()
         last_message = self.get_last_message_from_log()
-        
+
         goal_prompt = self.create_goal_prompt(narrative)
-        tool_config = self.llm.get_tool_config("set_goal", self.agent_config['name'])
-        goal_response = await self.llm.create_chat_completion(goal_prompt, last_message, tool_config)
-        
+        tool_config = self.llm.get_tool_config("set_goal", self.agent_config["name"])
+        goal_response = await self.llm.create_chat_completion(
+            goal_prompt, last_message, tool_config
+        )
+
         if goal_response:
             if isinstance(goal_response, dict):
-                return goal_response.get('goal', '')
+                return goal_response.get("goal", "")
             elif isinstance(goal_response, str):
                 return goal_response
-        
+
         self.logger.warning("Failed to generate a valid goal. Using default.")
         return "Process the message and respond appropriately"
 
     def get_last_message_from_log(self) -> str:
         for event in reversed(self.global_event_log.events):
             if event.type in ["user_message", "agent_message"]:
-                return event.data.get('content', '')
+                return event.data.get("content", "")
         return ""
 
     def create_goal_prompt(self, narrative: str) -> str:
@@ -151,34 +192,41 @@ class ArcaneArchitecture:
 
             Judge based on the above narrative...
             """
-        goal_check_response = await self.llm.create_chat_completion(goal_check_prompt, narrative, tool_config)
-        
-        
+        goal_check_response = await self.llm.create_chat_completion(
+            goal_check_prompt, narrative, tool_config
+        )
+
         # from remote_pdb import RemotePdb; RemotePdb('0.0.0.0', 5678).set_trace()
         if goal_check_response and len(goal_check_response) > 0:
             if isinstance(goal_check_response, dict):
-                achieved = goal_check_response.get('goal_achieved', False)
+                achieved = goal_check_response.get("goal_achieved", False)
             elif isinstance(goal_check_response, bool):
                 achieved = goal_check_response
             else:
                 achieved = False
-            
+
             print(f"Goal check: {'Achieved' if achieved else 'Not Achieved'}")
             return achieved
-        
+
         return False
 
-    async def process_message(self, sender_id: str, message: str, communication_channel: CommunicationChannel) -> Tuple[str, List[Dict[str, Any]]]:
+    async def process_message(
+        self, sender_id: str, message: str, communication_channel: CommunicationChannel
+    ) -> Tuple[str, List[Dict[str, Any]]]:
         # Determine if the sender is a user or an agent
-        event_type = "user_message" if sender_id.startswith("user_") else "agent_message"
+        event_type = (
+            "user_message" if sender_id.startswith("user_") else "agent_message"
+        )
         event_data = {"content": message, "sender": sender_id}
-        
+
         # Add the incoming message to the global event log
         self.global_event_log.add_event(Event(event_type, event_data), self.agent_id)
 
         # Generate the initial goal
         goal = await self.generate_initial_goal()
-        self.global_event_log.add_event(Event("goal_set", {"goal": goal}), self.agent_id)
+        self.global_event_log.add_event(
+            Event("goal_set", {"goal": goal}), self.agent_id
+        )
 
         executed_actions = []
         max_iterations = 5  # Limit the number of iterations to prevent infinite loops
@@ -191,60 +239,93 @@ class ArcaneArchitecture:
             next_action = await self.determine_next_action(goal, executed_actions)
 
             if next_action:
-                self.global_event_log.add_event(Event("agent_action", next_action), self.agent_id)
-                
+                self.global_event_log.add_event(
+                    Event("agent_action", next_action), self.agent_id
+                )
+
                 try:
-                    success, result = await self.execute_action(next_action, communication_channel)
-                    executed_actions.append({"action": next_action, "success": success, "result": result})
+                    success, result = await self.execute_action(
+                        next_action, communication_channel
+                    )
+                    executed_actions.append(
+                        {"action": next_action, "success": success, "result": result}
+                    )
                 except Exception as e:
                     self.logger.error(f"Error executing action: {str(e)}")
-                    executed_actions.append({"action": next_action, "success": False, "error": str(e)})
-                    await communication_channel.send_message(f"An error occurred while processing your request: {str(e)}")
+                    executed_actions.append(
+                        {"action": next_action, "success": False, "error": str(e)}
+                    )
+                    await communication_channel.send_message(
+                        f"An error occurred while processing your request: {str(e)}"
+                    )
             else:
                 self.logger.warning("No valid action determined. Ending process.")
-                await communication_channel.send_message("I'm having trouble determining the next step. Could you please provide more information or clarify your request?")
+                await communication_channel.send_message(
+                    "I'm having trouble determining the next step. Could you please provide more information or clarify your request?"
+                )
                 break
 
         return self.global_event_log.to_narrative(), executed_actions
 
-    async def determine_next_action(self, goal: str, actions: List[Dict]) -> Optional[Dict[str, Any]]:
-        action_prompt = self.create_action_prompt(goal, actions, self.global_event_log.to_narrative())
-        tool_config = self.llm.get_tool_config("create_action", agent_type=self.agent_id.split('-')[0])
-        action_response = await self.llm.create_chat_completion(action_prompt, self.get_last_message_from_log(), tool_config)
-        
+    async def determine_next_action(
+        self, goal: str, actions: List[Dict]
+    ) -> Optional[Dict[str, Any]]:
+        action_prompt = self.create_action_prompt(
+            goal, actions, self.global_event_log.to_narrative()
+        )
+        tool_config = self.llm.get_tool_config(
+            "create_action", agent_type=self.agent_id.split("-")[0]
+        )
+        action_response = await self.llm.create_chat_completion(
+            action_prompt, self.get_last_message_from_log(), tool_config
+        )
+
         if action_response:
             return action_response
-        
+
         self.logger.warning("Failed to determine next action. Using default.")
-        return {"action": "send_message_to_student", "params": {"message": "I'm not sure how to proceed. Can you provide more information?"}}
+        return {
+            "action": "send_message_to_student",
+            "params": {
+                "message": "I'm not sure how to proceed. Can you provide more information?"
+            },
+        }
 
-
-    async def execute_action(self, action_data: Dict[str, Any], communication_channel: CommunicationChannel) -> Tuple[bool, Any]:
+    async def execute_action(
+        self, action_data: Dict[str, Any], communication_channel: CommunicationChannel
+    ) -> Tuple[bool, Any]:
         try:
             # self.logger.debug(f"Attempting to parse action: {action_data}")
             action = self.parse_action(communication_channel, action_data)
             if action is None:
                 self.logger.warning(f"Unknown action: {action_data}")
                 return False, "Unknown action"
-            
+
             action_description = f"Executing {action_data['action']}"
             # self.logger.debug(f"Setting status: {action_description}")
             await self.arcane_system.set_status("busy", action_description)
-            
+
             # self.logger.debug(f"Executing action: {type(action).__name__}")
             success, result = await action.execute()
-            
+
             # self.logger.debug(f"Action execution complete. Success: {success}, Result: {result}")
-            
+
             if isinstance(action, DelegateAndExecuteTask) and success:
                 self.logger.debug("Adding task execution event to log")
-                self.global_event_log.add_event(Event("task_execution", {"content": result}), self.agent_id)
+                self.global_event_log.add_event(
+                    Event("task_execution", {"content": result}), self.agent_id
+                )
 
-            if action_data['action'] != 'send_message_to_student' and communication_channel is not None:
+            if (
+                action_data["action"] != "send_message_to_student"
+                and communication_channel is not None
+            ):
                 brief_result = str(result)[:50] if result else "No result"
                 # self.logger.debug(f"Sending execution update: {action_data['action']}, {brief_result}")
-                await self.send_execution_update(communication_channel, action_data['action'], brief_result)
-            
+                await self.send_execution_update(
+                    communication_channel, action_data["action"], brief_result
+                )
+
             return success, result
         except Exception as e:
             self.logger.error(f"Error executing action: {str(e)}", exc_info=True)
@@ -253,40 +334,85 @@ class ArcaneArchitecture:
             self.logger.debug("Unsetting busy status")
             await self.arcane_system.unset_busy_status()
 
-    def parse_action(self, communication_channel: CommunicationChannel, action_data: dict) -> Optional[Action]:
+    def parse_action(
+        self, communication_channel: CommunicationChannel, action_data: dict
+    ) -> Optional[Action]:
         self.logger.debug(f"Parsing action: {action_data}")
-        
+
         # Handle the unexpected nesting
-        if isinstance(action_data.get('action'), dict):
-            action_data = action_data['action']
-        
+        if isinstance(action_data.get("action"), dict):
+            action_data = action_data["action"]
+
         action_name = action_data.get("action")
         params = action_data.get("params", {})
-        
+
         # self.logger.debug(f"Action name: {action_name}, Params: {params}")
-        
+
         working_directory = self.agent_config.get("work_directory", "")
-        
+
         action_map = {
-            "run_command": lambda: QueryFileSystem(command=params.get("command", ""), work_directory=working_directory),
-            "view_file_contents": lambda: ViewFileContents(file_path=params.get("file_path", ""), work_directory=working_directory),
-            "edit_file_contents": lambda: EditFileContents(file_path=params.get("file_path", ""), content=params.get("content", ""), work_directory=working_directory),
-            "create_new_file": lambda: CreateNewFile(file_path=params.get("file_path", ""), work_directory=working_directory, content=params.get("contents", "")),
-            "run_python_file": lambda: RunPythonFile(file_path=params.get("file_path", ""), work_directory=working_directory),
-            "perplexity_search": lambda: PerplexitySearch(query=params.get("query", ""), api_key=get_environment_variable('PERPLEXITY_API_KEY')),
-            "send_message_to_student": lambda: SendMessageToStudent(communication_channel=communication_channel, message=params.get("message", "")),
-            "send_niacl_message": lambda: SendNIACLMessage(receiver=params.get("receiver", ""), message=params.get("message", ""), sender=self.agent_id, agent_config=self.agent_config),
-            "delegate_and_execute_task": lambda: DelegateAndExecuteTask(plan_name=params.get("task_name", "Unnamed Task"), plan_description=params.get("task_description", "No Description Given"), agent_id=self.agent_id, llm=self.llm, agent_factory=self.agent_factory, stratos=self.arcane_system, logger=self.logger),
-            "declare_complete": lambda: DeclareComplete(agent_id=self.agent_id, message=params.get("message", ""), files=params.get("files", []), work_directory=working_directory),
-            "visualize_image": lambda: VisualizeImage(file_path=params.get("file_path", ""), work_directory=working_directory)
+            "run_command": lambda: QueryFileSystem(
+                command=params.get("command", ""), work_directory=working_directory
+            ),
+            "view_file_contents": lambda: ViewFileContents(
+                file_path=params.get("file_path", ""), work_directory=working_directory
+            ),
+            "edit_file_contents": lambda: EditFileContents(
+                file_path=params.get("file_path", ""),
+                content=params.get("content", ""),
+                work_directory=working_directory,
+            ),
+            "create_new_file": lambda: CreateNewFile(
+                file_path=params.get("file_path", ""),
+                work_directory=working_directory,
+                content=params.get("contents", ""),
+            ),
+            "run_python_file": lambda: RunPythonFile(
+                file_path=params.get("file_path", ""), work_directory=working_directory
+            ),
+            "perplexity_search": lambda: PerplexitySearch(
+                query=params.get("query", ""),
+                api_key=get_environment_variable("PERPLEXITY_API_KEY"),
+            ),
+            "send_message_to_student": lambda: SendMessageToStudent(
+                communication_channel=communication_channel,
+                message=params.get("message", ""),
+            ),
+            "send_niacl_message": lambda: SendNIACLMessage(
+                receiver=params.get("receiver", ""),
+                message=params.get("message", ""),
+                sender=self.agent_id,
+                agent_config=self.agent_config,
+            ),
+            "delegate_and_execute_task": lambda: DelegateAndExecuteTask(
+                plan_name=params.get("task_name", "Unnamed Task"),
+                plan_description=params.get("task_description", "No Description Given"),
+                agent_id=self.agent_id,
+                llm=self.llm,
+                agent_factory=self.agent_factory,
+                stratos=self.arcane_system,
+                logger=self.logger,
+            ),
+            "declare_complete": lambda: DeclareComplete(
+                agent_id=self.agent_id,
+                message=params.get("message", ""),
+                files=params.get("files", []),
+                work_directory=working_directory,
+            ),
+            "visualize_image": lambda: VisualizeImage(
+                file_path=params.get("file_path", ""), work_directory=working_directory
+            ),
         }
-        
+
         action_creator = action_map.get(action_name)
         if action_creator:
             try:
                 return action_creator()
             except Exception as e:
-                self.logger.error(f"Error creating action instance for {action_name}: {str(e)}", exc_info=True)
+                self.logger.error(
+                    f"Error creating action instance for {action_name}: {str(e)}",
+                    exc_info=True,
+                )
                 return None
         else:
             self.logger.warning(f"Unknown action: {action_name}")
@@ -294,12 +420,13 @@ class ArcaneArchitecture:
 
     def get_last_message(self, sender_id: str) -> str:
         for event in reversed(self.global_event_log.events):
-            if event.type in ["user_message", "agent_message"]: 
-                return event.data.get('content', '')
+            if event.type in ["user_message", "agent_message"]:
+                return event.data.get("content", "")
         return ""
 
-
-    def create_action_prompt(self, goal: str, actions: List[Dict], narrative: str) -> str:
+    def create_action_prompt(
+        self, goal: str, actions: List[Dict], narrative: str
+    ) -> str:
         context = self.create_system_message()
         action_log_str = json.dumps(actions, indent=2)
         return f"""
@@ -369,9 +496,9 @@ class ArcaneArchitecture:
         Current working directory structure and file contents:
         {directory_contents}
         """
-    
+
     def get_directory_contents(self):
-        work_directory = self.agent_config.get('work_directory')
+        work_directory = self.agent_config.get("work_directory")
         if not work_directory:
             # If work_directory is not set, use a default directory or return a message
             return "No specific work directory set for this agent."
@@ -381,21 +508,20 @@ class ArcaneArchitecture:
             return f"Work directory does not exist: {work_directory}"
         structure = []
         for root, dirs, files in os.walk(work_directory):
-            level = root.replace(work_directory, '').count(os.sep)
-            indent = ' ' * 4 * level
+            level = root.replace(work_directory, "").count(os.sep)
+            indent = " " * 4 * level
             structure.append(f"{indent}{os.path.basename(root)}/")
-            subindent = ' ' * 4 * (level + 1)
+            subindent = " " * 4 * (level + 1)
             for f in files:
-                if f.endswith(('.py', '.yaml', '.txt', '.md', '.csv')):
+                if f.endswith((".py", ".yaml", ".txt", ".md", ".csv")):
                     file_path = os.path.join(root, f)
                     relative_path = os.path.relpath(file_path, work_directory)
                     structure.append(f"{subindent}{relative_path}")
-                    with open(file_path, 'r') as file:
+                    with open(file_path, "r") as file:
                         content = file.read()
                     structure.append(f"{subindent}Content of {relative_path}:")
                     structure.append(f"{subindent}{content}")
-        return '\n'.join(structure)
-
+        return "\n".join(structure)
 
     def get_event_log(self) -> GlobalEventLog:
         return self.global_event_log
@@ -413,6 +539,8 @@ class ArcaneArchitecture:
         self.logger.info("Shutting down ArcaneArchitecture")
         # Add any cleanup code here, such as saving state or closing connections
 
-    async def send_execution_update(self, communication_channel, action_name, brief_result):
+    async def send_execution_update(
+        self, communication_channel, action_name, brief_result
+    ):
         update_message = f"    Executed: {action_name} - {brief_result[:50]}..."
         await communication_channel.send_execution_update(update_message)

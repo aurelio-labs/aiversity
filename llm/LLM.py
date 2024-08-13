@@ -10,13 +10,16 @@ import time
 from datetime import datetime
 import anthropic
 
+
 class LLMMessage(TypedDict):
     role: str
     content: str
 
+
 class ChatCompletion(TypedDict):
     model: str
     conversation: List[LLMMessage]
+
 
 class LLM:
     def __init__(self, logging, api_key, model):
@@ -30,28 +33,37 @@ class LLM:
         self.log_folder = "llm_logs"
         os.makedirs(self.log_folder, exist_ok=True)
 
-    def log_request_response(self, request: Dict[str, Any], response: Any, success: bool):
+    def log_request_response(
+        self, request: Dict[str, Any], response: Any, success: bool
+    ):
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
         log_file = os.path.join(self.log_folder, f"{timestamp}_llm_log.json")
         log_data = {
             "timestamp": timestamp,
             "request": request,
             "response": response,
-            "success": success
+            "success": success,
         }
-        with open(log_file, 'w') as f:
+        with open(log_file, "w") as f:
             json.dump(log_data, f, indent=2)
 
-    async def create_chat_completion(self, system_message: str, user_message: str, tool_config: Dict[str, Any]) -> Dict[str, Any]:
+    async def create_chat_completion(
+        self, system_message: str, user_message: str, tool_config: Dict[str, Any]
+    ) -> Dict[str, Any]:
         conversation = [
             {"role": "system", "content": system_message},
-            {"role": "user", "content": user_message}
+            {"role": "user", "content": user_message},
         ]
         return await self.create_conversation_completion(conversation, tool_config)
 
-    async def create_conversation_completion(self, conversation: List[Dict[str, str]], tool_config: Dict[str, Any]) -> Dict[str, Any]:
+    async def create_conversation_completion(
+        self, conversation: List[Dict[str, str]], tool_config: Dict[str, Any]
+    ) -> Dict[str, Any]:
         messages = [
-            {"role": "assistant" if msg["role"] == "system" else msg["role"], "content": msg["content"]}
+            {
+                "role": "assistant" if msg["role"] == "system" else msg["role"],
+                "content": msg["content"],
+            }
             for msg in conversation
         ]
 
@@ -64,22 +76,30 @@ class LLM:
             "model": self.model,
             "messages": messages,
             "max_tokens": 4000,
-            "tools": [tool]
+            "tools": [tool],
         }
-
 
         try:
             response = self.client.messages.create(**request)
             action = None
             for content_item in response.content:
-                if hasattr(content_item, 'name') and content_item.name == tool_config['name']:
-                    if hasattr(content_item, 'input') and isinstance(content_item.input, dict):
+                if (
+                    hasattr(content_item, "name")
+                    and content_item.name == tool_config["name"]
+                ):
+                    if hasattr(content_item, "input") and isinstance(
+                        content_item.input, dict
+                    ):
                         action = content_item.input
                         break
                 elif isinstance(content_item, anthropic.types.TextBlock):
                     try:
                         action_json = json.loads(content_item.text)
-                        if isinstance(action_json, dict) and 'action' in action_json and 'params' in action_json:
+                        if (
+                            isinstance(action_json, dict)
+                            and "action" in action_json
+                            and "params" in action_json
+                        ):
                             action = action_json
                             break
                     except json.JSONDecodeError:
@@ -89,7 +109,9 @@ class LLM:
             self.log_request_response(request, response.dict(), success)
 
             if not action:
-                self.logging.warning(f"No valid {tool_config['name']} was generated from the LLM response.")
+                self.logging.warning(
+                    f"No valid {tool_config['name']} was generated from the LLM response."
+                )
 
             return action
 
@@ -100,30 +122,34 @@ class LLM:
 
     def get_dynamic_tool(self, config: Dict[str, Any]):
         return {
-            "name": config['name'],
-            "description": config['description'],
+            "name": config["name"],
+            "description": config["description"],
             "input_schema": {
                 "type": "object",
-                "properties": {
-                    config['output_key']: config['output_schema']
-                },
-                "required": [config['output_key']]
-            }
+                "properties": {config["output_key"]: config["output_schema"]},
+                "required": [config["output_key"]],
+            },
         }
 
-    def add_completion_listener(self, listener: Callable[[ChatCompletion], None]) -> None:
+    def add_completion_listener(
+        self, listener: Callable[[ChatCompletion], None]
+    ) -> None:
         self.listeners.add(listener)
 
-    def remove_completion_listener(self, listener: Callable[[ChatCompletion], None]) -> None:
+    def remove_completion_listener(
+        self, listener: Callable[[ChatCompletion], None]
+    ) -> None:
         self.listeners.discard(listener)
 
     @staticmethod
-    def get_tool_config(tool_type: str, agent_type: str, isolated_agent: bool = False) -> Dict[str, Any]:
+    def get_tool_config(
+        tool_type: str, agent_type: str, isolated_agent: bool = False
+    ) -> Dict[str, Any]:
         actions = load_actions(agent_type)
-        action_names = [action['name'] for action in actions]
-        
+        action_names = [action["name"] for action in actions]
+
         isolation = ""
-        if not isolated_agent and 'send_message_to_student' in action_names:
+        if not isolated_agent and "send_message_to_student" in action_names:
             isolation = "IMPORTANT: After any action that retrieves information or performs a task, you MUST include a send_message_to_student action to communicate the results or acknowledge the completion of the task to the user."
 
         tool_configs = {
@@ -137,17 +163,17 @@ class LLM:
                         "action": {
                             "type": "string",
                             "enum": action_names,
-                            "description": "The type of action to perform"
+                            "description": "The type of action to perform",
                         },
                         "params": {
                             "type": "object",
                             "properties": {
-                                action['name']: {"type": "object"} for action in actions
-                            }
-                        }
+                                action["name"]: {"type": "object"} for action in actions
+                            },
+                        },
                     },
-                    "required": ["action", "params"]
-                }
+                    "required": ["action", "params"],
+                },
             },
             "set_goal": {
                 "name": "set_goal",
@@ -155,8 +181,8 @@ class LLM:
                 "output_key": "goal",
                 "output_schema": {
                     "type": "string",
-                    "description": "The goal to be set"
-                }
+                    "description": "The goal to be set",
+                },
             },
             "goal_check": {
                 "name": "goal_check",
@@ -164,8 +190,8 @@ class LLM:
                 "output_key": "goal_achieved",
                 "output_schema": {
                     "type": "boolean",
-                    "description": "Whether the goal has been achieved"
-                }
+                    "description": "Whether the goal has been achieved",
+                },
             },
             "reassessment_decision": {
                 "name": "reassessment_decision",
@@ -176,15 +202,15 @@ class LLM:
                     "properties": {
                         "should_reassess": {
                             "type": "boolean",
-                            "description": "Whether the goal should be reassessed"
+                            "description": "Whether the goal should be reassessed",
                         },
                         "reason": {
                             "type": "string",
-                            "description": "The reason for the decision"
-                        }
+                            "description": "The reason for the decision",
+                        },
                     },
-                    "required": ["should_reassess", "reason"]
-                }
+                    "required": ["should_reassess", "reason"],
+                },
             },
             "delegate_and_execute_task": {
                 "name": "delegate_and_execute_task",
@@ -206,18 +232,22 @@ class LLM:
                                             "properties": {
                                                 "name": {"type": "string"},
                                                 "description": {"type": "string"},
-                                                "agent_type": {"type": "string"}
+                                                "agent_type": {"type": "string"},
                                             },
-                                            "required": ["name", "description", "agent_type"]
-                                        }
-                                    }
+                                            "required": [
+                                                "name",
+                                                "description",
+                                                "agent_type",
+                                            ],
+                                        },
+                                    },
                                 },
-                                "required": ["order", "tasks"]
-                            }
+                                "required": ["order", "tasks"],
+                            },
                         }
                     },
-                    "required": ["levels"]
-                }
-            }
+                    "required": ["levels"],
+                },
+            },
         }
         return tool_configs.get(tool_type, {})

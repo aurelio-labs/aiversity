@@ -2,8 +2,18 @@ from typing import List, Dict, Any
 from datetime import datetime
 import uuid
 
+
 class Task:
-    def __init__(self, name: str, description: str, agent_type: str, task_id: str = None, level: 'Level' = None, input_files: List[str] = None, output_files: List[str] = None):
+    def __init__(
+        self,
+        name: str,
+        description: str,
+        agent_type: str,
+        task_id: str = None,
+        level: "Level" = None,
+        input_files: List[str] = None,
+        output_files: List[str] = None,
+    ):
         self.id = task_id or str(uuid.uuid4())
         self.name = name
         self.description = description
@@ -33,24 +43,28 @@ class Task:
             "output_files": self.output_files,
         }
 
-
     @classmethod
-    def from_dict(cls, data: Dict[str, Any], level: 'Level' = None) -> 'Task':
+    def from_dict(cls, data: Dict[str, Any], level: "Level" = None) -> "Task":
         task = cls(
-            data['name'], 
-            data['description'], 
-            data['agent_type'], 
-            data['id'], 
+            data["name"],
+            data["description"],
+            data["agent_type"],
+            data["id"],
             level,
-            data.get('input_files', []),
-            data.get('output_files', [])
+            data.get("input_files", []),
+            data.get("output_files", []),
         )
-        task.status = data['status']
-        task.start_time = datetime.fromisoformat(data['start_time']) if data['start_time'] else None
-        task.end_time = datetime.fromisoformat(data['end_time']) if data['end_time'] else None
-        task.output_message = data.get('output_message')
-        task.output_files = data.get('output_files', [])
+        task.status = data["status"]
+        task.start_time = (
+            datetime.fromisoformat(data["start_time"]) if data["start_time"] else None
+        )
+        task.end_time = (
+            datetime.fromisoformat(data["end_time"]) if data["end_time"] else None
+        )
+        task.output_message = data.get("output_message")
+        task.output_files = data.get("output_files", [])
         return task
+
 
 class Level:
     def __init__(self, order: int, level_id: str = None):
@@ -72,17 +86,22 @@ class Level:
             "tasks": [task.to_dict() for task in self.tasks],
             "status": self.status,
             "start_time": self.start_time.isoformat() if self.start_time else None,
-            "end_time": self.end_time.isoformat() if self.end_time else None
+            "end_time": self.end_time.isoformat() if self.end_time else None,
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'Level':
-        level = cls(data['order'], data['id'])
-        level.tasks = [Task.from_dict(task_data, level) for task_data in data['tasks']]
-        level.status = data['status']
-        level.start_time = datetime.fromisoformat(data['start_time']) if data['start_time'] else None
-        level.end_time = datetime.fromisoformat(data['end_time']) if data['end_time'] else None
+    def from_dict(cls, data: Dict[str, Any]) -> "Level":
+        level = cls(data["order"], data["id"])
+        level.tasks = [Task.from_dict(task_data, level) for task_data in data["tasks"]]
+        level.status = data["status"]
+        level.start_time = (
+            datetime.fromisoformat(data["start_time"]) if data["start_time"] else None
+        )
+        level.end_time = (
+            datetime.fromisoformat(data["end_time"]) if data["end_time"] else None
+        )
         return level
+
 
 class Plan:
     def __init__(self, name: str, description: str, plan_id: str = None):
@@ -107,15 +126,15 @@ class Plan:
             "status": self.status,
             "creation_time": self.creation_time.isoformat(),
             "last_updated": self.last_updated.isoformat(),
-            "work_directory": self.work_directory
+            "work_directory": self.work_directory,
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'Plan':
-        plan = cls(data['name'], data['description'], data['id'])
-        plan.levels = [Level.from_dict(level_data) for level_data in data['levels']]
-        plan.status = data['status']
-        plan.creation_time = datetime.fromisoformat(data['creation_time'])
-        plan.last_updated = datetime.fromisoformat(data['last_updated'])
-        plan.work_directory = data.get('work_directory')
+    def from_dict(cls, data: Dict[str, Any]) -> "Plan":
+        plan = cls(data["name"], data["description"], data["id"])
+        plan.levels = [Level.from_dict(level_data) for level_data in data["levels"]]
+        plan.status = data["status"]
+        plan.creation_time = datetime.fromisoformat(data["creation_time"])
+        plan.last_updated = datetime.fromisoformat(data["last_updated"])
+        plan.work_directory = data.get("work_directory")
         return plan

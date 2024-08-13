@@ -10,27 +10,46 @@ import os
 import asyncio
 from collections import deque
 
+
 class ArcaneSystem:
-    def __init__(self, name: str, llm: LLM, model: str, logger: logging.Logger, port: int, agent_config: dict, common_actions: List[Dict], api_key, agent_factory):
+    def __init__(
+        self,
+        name: str,
+        llm: LLM,
+        model: str,
+        logger: logging.Logger,
+        port: int,
+        agent_config: dict,
+        common_actions: List[Dict],
+        api_key,
+        agent_factory,
+    ):
         self.name = name
         self.llm = llm
         self.model = model
         self.logger = logger
-        self.agent_id = agent_config['id']
+        self.agent_id = agent_config["id"]
         self.agent_config = agent_config
         self.common_actions = common_actions
         self.agent_prompt = generate_agent_prompt(agent_config)
         self.agent_factory = agent_factory
-        self.arcane_architecture = ArcaneArchitecture(self.llm, self.logger, self.agent_id, self.agent_prompt, self.agent_config, self, self.agent_factory)
-        self.allowed_communications = agent_config['allowed_communications']
+        self.arcane_architecture = ArcaneArchitecture(
+            self.llm,
+            self.logger,
+            self.agent_id,
+            self.agent_prompt,
+            self.agent_config,
+            self,
+            self.agent_factory,
+        )
+        self.allowed_communications = agent_config["allowed_communications"]
         self.message_queue = deque(maxlen=100)  # Limit to last 100 messages
-
 
         self.status = "idle"
         # if self.agent_id == "stratos-5001":
         #     self.status = "busy"
         self.current_action = None
-        self.responsive_llm = LLM(logger, api_key, os.getenv('CLAUDE_RESPONSIVE_MODEL'))
+        self.responsive_llm = LLM(logger, api_key, os.getenv("CLAUDE_RESPONSIVE_MODEL"))
 
     async def log_file_addition(self, file_name: str):
         print(f"Logging file addition: {file_name}")
@@ -41,7 +60,6 @@ class ArcaneSystem:
         print(f"Logging file deletion: {file_name}")  # Debug print
         event = Event("file_deleted", {"file_name": file_name})
         self.arcane_architecture.global_event_log.add_event(event, self.agent_id)
-
 
     async def set_status(self, status: str, action_description: str = None):
         self.status = status
@@ -63,39 +81,47 @@ class ArcaneSystem:
         I will keep the response under 50 words.
         """
         tool_config = self.responsive_llm.get_tool_config("create_action")
-        response = await self.responsive_llm.create_chat_completion(prompt, "Provide an NIACL response now. You should communicate via send_niacl_message.", tool_config)
-        
+        response = await self.responsive_llm.create_chat_completion(
+            prompt,
+            "Provide an NIACL response now. You should communicate via send_niacl_message.",
+            tool_config,
+        )
+
         if response and isinstance(response, list) and len(response) > 0:
-            niacl_message = response[0]['actions'][0]['params']['message']
-            
+            niacl_message = response[0]["actions"][0]["params"]["message"]
+
             # Create and send NIACL message asynchronously
             send_niacl = SendNIACLMessage(
                 receiver=sender,
                 message=niacl_message,
                 sender=self.agent_id,
-                agent_config=self.agent_config
+                agent_config=self.agent_config,
             )
             asyncio.create_task(send_niacl.execute())
-            
+
             return f"NIACL message sent asynchronously to {sender}. The agent will continue its current task and will be notified when a response is received."
         else:
             return "Unable to generate a response. The agent will continue its current task."
 
-
-
-    async def process_incoming_user_message(self, communication_channel: CommunicationChannel, user_id: str) -> Tuple[str, List[Dict[str, Any]]]:
+    async def process_incoming_user_message(
+        self, communication_channel: CommunicationChannel, user_id: str
+    ) -> Tuple[str, List[Dict[str, Any]]]:
         try:
             message = await communication_channel.get_last_message()
-            narrative, actions = await self.arcane_architecture.process_message(user_id, message, communication_channel)
-            
+            narrative, actions = await self.arcane_architecture.process_message(
+                user_id, message, communication_channel
+            )
+
             print(f"Processed message for {user_id}. Actions taken: {len(actions)}")
-            
+
             return narrative, actions
         except Exception as e:
             await self.handle_error(e, user_id, communication_channel)
             return f"An error occurred: {str(e)}", []
 
-    async def process_incoming_agent_message(self, sender: str, message: str) -> Tuple[str, List[Dict[str, Any]]]:
+    async def process_incoming_agent_message(
+        self, sender: str, message: str
+    ) -> Tuple[str, List[Dict[str, Any]]]:
         self.message_queue.append((sender, message))
         if self.status == "busy":
             status_response = await self.get_status_response(sender)
@@ -103,10 +129,14 @@ class ArcaneSystem:
         try:
             # from remote_pdb import RemotePdb; RemotePdb('0.0.0.0', 5678).set_trace()
             communication_channel = AgentCommunicationChannel(sender, message, self)
-            narrative, actions = await self.arcane_architecture.process_message(sender, message, communication_channel)
-            
-            print(f"Processed agent message from {sender}. Actions taken: {len(actions)}")
-            
+            narrative, actions = await self.arcane_architecture.process_message(
+                sender, message, communication_channel
+            )
+
+            print(
+                f"Processed agent message from {sender}. Actions taken: {len(actions)}"
+            )
+
             return narrative, actions
         except Exception as e:
             print(f"Error processing agent message: {str(e)}")
@@ -116,13 +146,17 @@ class ArcaneSystem:
         # Remove the event logging from here - was causing duplicate messages
         # event = Event("agent_message", {"sender": sender, "content": message})
         # self.arcane_architecture.global_event_log.add_event(event)
-        
+
         # Keep only the print statement
         print(f"Received message from {sender}: {message[:50]}...")
-        
 
-    async def log_agent_message_processing(self, sender_id: str, narrative: str, actions: List[Dict[str, Any]]):
-        event = Event("agent_message_processed", {"narrative": narrative, "actions": actions, "sender_id": sender_id})
+    async def log_agent_message_processing(
+        self, sender_id: str, narrative: str, actions: List[Dict[str, Any]]
+    ):
+        event = Event(
+            "agent_message_processed",
+            {"narrative": narrative, "actions": actions, "sender_id": sender_id},
+        )
         self.arcane_architecture.global_event_log.add_event(event, self.agent_id)
 
     async def start(self) -> None:
@@ -140,14 +174,21 @@ class ArcaneSystem:
     def clear_event_log(self):
         self.arcane_architecture.global_event_log = GlobalEventLog()
 
-    async def handle_error(self, error: Exception, user_id: str, communication_channel: CommunicationChannel) -> None:
-        await self.arcane_architecture.handle_error(error, user_id, communication_channel)
+    async def handle_error(
+        self,
+        error: Exception,
+        user_id: str,
+        communication_channel: CommunicationChannel,
+    ) -> None:
+        await self.arcane_architecture.handle_error(
+            error, user_id, communication_channel
+        )
 
     def get_available_actions(self) -> List[str]:
-        return [action['action'] for action in self.common_actions + self.agent_config['specific_actions']]
-    
-
-
+        return [
+            action["action"]
+            for action in self.common_actions + self.agent_config["specific_actions"]
+        ]
 
     async def evaluate_task_progress(self, response: str) -> Dict[str, Any]:
         prompt = f"""
@@ -165,12 +206,21 @@ class ArcaneSystem:
         """
 
         tool_config = self.llm.get_tool_config("create_action", self.agent_id)
-        evaluation_response = await self.llm.create_chat_completion(self.agent_prompt, prompt, tool_config)
+        evaluation_response = await self.llm.create_chat_completion(
+            self.agent_prompt, prompt, tool_config
+        )
 
-        if evaluation_response and isinstance(evaluation_response, list) and len(evaluation_response) > 0:
+        if (
+            evaluation_response
+            and isinstance(evaluation_response, list)
+            and len(evaluation_response) > 0
+        ):
             return evaluation_response[0]
         else:
-            return {"is_complete": False, "feedback": "Unable to evaluate task progress. Please provide more information."}
+            return {
+                "is_complete": False,
+                "feedback": "Unable to evaluate task progress. Please provide more information.",
+            }
 
     def has_new_message(self) -> bool:
         return len(self.message_queue) > 0

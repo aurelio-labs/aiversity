@@ -2,6 +2,7 @@ from typing import List
 from channels.communication_channel import CommunicationChannel
 from ARCANE.types import ChatMessage, create_chat_message
 
+
 class AgentCommunicationChannel(CommunicationChannel):
     def __init__(self, sender: str, message: str, arcane_system):
         self.sender = sender
@@ -15,7 +16,7 @@ class AgentCommunicationChannel(CommunicationChannel):
         chat_message = create_chat_message(self.arcane_system.name, text)
         self.messages.append(chat_message)
         print(f"Agent {self.arcane_system.name} generated response: {text[:50]}...")
-        
+
         # Here, we could trigger a new NIACL message if needed
         # await self.arcane_system.send_niacl_message(self.sender, text)
 

@@ -13,6 +13,3 @@ class SendMessageToUser(Action):
 
     def __str__(self):
         return "send_message_to_user with text: " + self.response_text
-
-
-

@@ -5,32 +5,34 @@ import re
 import time
 from datetime import datetime
 
+
 def load_json_file(file_path):
-    with open(file_path, 'r') as file:
+    with open(file_path, "r") as file:
         return json.load(file)
+
 
 def color_json(json_str):
     colors = {
-        'key': '#79c0ff',
-        'string': '#a5d6ff',
-        'number': '#ffa657',
-        'boolean': '#ff7b72',
-        'null': '#ff7b72',
-        'brace': '#c9d1d9'
+        "key": "#79c0ff",
+        "string": "#a5d6ff",
+        "number": "#ffa657",
+        "boolean": "#ff7b72",
+        "null": "#ff7b72",
+        "brace": "#c9d1d9",
     }
-    
+
     def colorize(match):
         token = match.group(0)
-        if ':' in token:
-            key = token.split(':')[0].strip('"')
+        if ":" in token:
+            key = token.split(":")[0].strip('"')
             return f'<span style="color: {colors["key"]}">{key}</span>:'
         elif token.startswith('"'):
             return f'<span style="color: {colors["string"]}">{token}</span>'
-        elif token in ('true', 'false'):
+        elif token in ("true", "false"):
             return f'<span style="color: {colors["boolean"]}">{token}</span>'
-        elif token == 'null':
+        elif token == "null":
             return f'<span style="color: {colors["null"]}">{token}</span>'
-        elif token in '{}[]':
+        elif token in "{}[]":
             return f'<span style="color: {colors["brace"]}">{token}</span>'
         else:  # number
             return f'<span style="color: {colors["number"]}">{token}</span>'
@@ -38,10 +40,11 @@ def color_json(json_str):
     regex = r'("[^"]*")\s*:|"[^"]*"|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|true|false|null|[{}\[\]]'
     return re.sub(regex, colorize, json_str)
 
+
 def format_json(data):
     def format_value(v):
         if isinstance(v, str):
-            return html_escape(v).replace('\n', '<br>')
+            return html_escape(v).replace("\n", "<br>")
         elif isinstance(v, (dict, list)):
             return json.dumps(v, indent=2, ensure_ascii=False)
         else:
@@ -66,18 +69,29 @@ def format_json(data):
                 result.append(f'{"&nbsp;" * indent}]')
             else:
                 result.append(f'{"&nbsp;" * indent}"{k}": {format_value(v)},')
-        return '<br>'.join(result)
+        return "<br>".join(result)
 
     formatted_json = format_dict(data)
-    return color_json(f'<pre>{formatted_json}</pre>')
+    return color_json(f"<pre>{formatted_json}</pre>")
+
 
 def html_escape(text):
-    return text.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quot;').replace("'", '&#39;')
+    return (
+        text.replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace('"', "&quot;")
+        .replace("'", "&#39;")
+    )
+
 
 def get_log_files():
     log_folder = "llm_logs"
-    files = [f for f in os.listdir(log_folder) if f.endswith('.json')]
-    return sorted(files, key=lambda x: os.path.getmtime(os.path.join(log_folder, x)), reverse=True)
+    files = [f for f in os.listdir(log_folder) if f.endswith(".json")]
+    return sorted(
+        files, key=lambda x: os.path.getmtime(os.path.join(log_folder, x)), reverse=True
+    )
+
 
 st.set_page_config(layout="wide", page_title="LLM Log Viewer")
 
@@ -100,12 +114,14 @@ log_files = get_log_files()
 st.sidebar.header("Select Log File")
 for file in log_files:
     file_path = os.path.join("llm_logs", file)
-    timestamp = datetime.fromtimestamp(os.path.getmtime(file_path)).strftime('%Y-%m-%d %H:%M:%S')
+    timestamp = datetime.fromtimestamp(os.path.getmtime(file_path)).strftime(
+        "%Y-%m-%d %H:%M:%S"
+    )
     if st.sidebar.button(f"{timestamp} - {file}", key=file):
         st.session_state.selected_file = file
 
 # Main content area
-if 'selected_file' in st.session_state and st.session_state.selected_file in log_files:
+if "selected_file" in st.session_state and st.session_state.selected_file in log_files:
     file_path = os.path.join("llm_logs", st.session_state.selected_file)
     data = load_json_file(file_path)
 
@@ -114,16 +130,21 @@ if 'selected_file' in st.session_state and st.session_state.selected_file in log
 
     with col1:
         st.subheader("Request")
-        request_html = format_json(data['request'])
-        st.markdown(f'<div class="json-content">{request_html}</div>', unsafe_allow_html=True)
+        request_html = format_json(data["request"])
+        st.markdown(
+            f'<div class="json-content">{request_html}</div>', unsafe_allow_html=True
+        )
 
     with col2:
         st.subheader("Response")
-        response_html = format_json(data['response'])
-        st.markdown(f'<div class="json-content">{response_html}</div>', unsafe_allow_html=True)
+        response_html = format_json(data["response"])
+        st.markdown(
+            f'<div class="json-content">{response_html}</div>', unsafe_allow_html=True
+        )
 
     # Add custom CSS for better formatting
-    st.markdown("""
+    st.markdown(
+        """
     <style>
     .json-content {
         background-color: #0d1117;
@@ -141,7 +162,9 @@ if 'selected_file' in st.session_state and st.session_state.selected_file in log
         margin: 0;
     }
     </style>
-    """, unsafe_allow_html=True)
+    """,
+        unsafe_allow_html=True,
+    )
 
 else:
     st.write("No file selected. Please choose a file from the sidebar.")

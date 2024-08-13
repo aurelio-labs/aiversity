@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Optional, Tuple
 
+
 class Action(ABC):
     @abstractmethod
     async def execute(self) -> Tuple[bool, Optional[str]]:

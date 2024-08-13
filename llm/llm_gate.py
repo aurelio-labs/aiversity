@@ -1,4 +1,3 @@
-
 import json
 from collections import deque
 from threading import Timer
@@ -17,17 +16,19 @@ class GPT:
 
 
 class LLMGate:
-    def __init__(self,
-                 inputs: List[str],
-                 api_key: str,
-                 model: str = "text-davinci-002",
-                 timer: Optional[int] = None,
-                 trigger_condition: Optional[Callable] = None,
-                 memory_capacity: Optional[int] = None,
-                 memory_labeling: Optional[Dict[str, Any]] = None,
-                 category_label: Optional[str] = None,
-                 operation: Optional[str] = None,
-                 input_weights: Optional[Dict[str, float]] = None):
+    def __init__(
+        self,
+        inputs: List[str],
+        api_key: str,
+        model: str = "text-davinci-002",
+        timer: Optional[int] = None,
+        trigger_condition: Optional[Callable] = None,
+        memory_capacity: Optional[int] = None,
+        memory_labeling: Optional[Dict[str, Any]] = None,
+        category_label: Optional[str] = None,
+        operation: Optional[str] = None,
+        input_weights: Optional[Dict[str, float]] = None,
+    ):
         self.inputs = inputs
         self.processor = GPT(api_key)
         self.model = model
@@ -64,7 +65,9 @@ class LLMGate:
             return "Trigger condition not met"
 
         weighted_inputs = self._apply_weights()
-        output = self.processor.create_chat_completion(self.model, self.operation, weighted_inputs)
+        output = self.processor.create_chat_completion(
+            self.model, self.operation, weighted_inputs
+        )
         self.add_to_memory(output)
         return output
 

@@ -40,9 +40,10 @@ If I trigger an action that has a return value, I make sure to include its resul
 I always stay within my defined role and use only the actions available to me.
 """
 
+
 def generate_agent_prompt(agent_config):
-    agent_name = agent_config['name']
-    
+    agent_name = agent_config["name"]
+
     # Determine the agent type
     if agent_name.startswith("Task_"):
         agent_type = "task_agent"
@@ -50,27 +51,30 @@ def generate_agent_prompt(agent_config):
         agent_type = agent_name
 
     actions = load_actions(agent_type)
-    
-    all_actions = ", ".join([action['name'] for action in actions])
-    
-    action_descriptions = "\n".join([
-        f"- {action['name']}{action['parameters']}: {action['description']}"
-        for action in actions
-    ])
-    
+
+    all_actions = ", ".join([action["name"] for action in actions])
+
+    action_descriptions = "\n".join(
+        [
+            f"- {action['name']}{action['parameters']}: {action['description']}"
+            for action in actions
+        ]
+    )
+
     action_example = generate_action_example(agent_type)
-    
+
     return base_prompt.format(
-        specific_context=agent_config['specific_context'],
-        personality=agent_config['personality'],
+        specific_context=agent_config["specific_context"],
+        personality=agent_config["personality"],
         all_actions=all_actions,
         action_descriptions=action_descriptions,
-        action_example=action_example
+        action_example=action_example,
     )
+
 
 def generate_action_example(agent_type):
     if agent_type == "iris":
-        return '''[
+        return """[
  {
  "action": "send_niacl_message",
  "params": {
@@ -84,9 +88,9 @@ def generate_action_example(agent_type):
    "message": "I've contacted STRATOS to help with planning your study schedule. I'll get back to you soon with more information."
  }
  }
-]'''
+]"""
     elif agent_type == "stratos":
-        return '''[
+        return """[
  {
  "action": "delegate_and_execute_task",
  "params": {
@@ -101,9 +105,9 @@ def generate_action_example(agent_type):
    "message": "I've created a study plan. Please inform the student that it's ready."
  }
  }
-]'''
+]"""
     elif agent_type == "task_agent":
-        return '''[
+        return """[
  {
  "action": "perplexity_search",
  "params": {
@@ -124,9 +128,9 @@ def generate_action_example(agent_type):
    "files": [{"name": "study_tips.txt", "description": "List of effective study techniques"}]
  }
  }
-]'''
+]"""
     else:
-        return '''[
+        return """[
  {
  "action": "perplexity_search",
  "params": {
@@ -140,4 +144,4 @@ def generate_action_example(agent_type):
    "contents": "Task output goes here"
  }
  }
-]'''
+]"""

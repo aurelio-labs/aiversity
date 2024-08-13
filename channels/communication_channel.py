@@ -11,7 +11,7 @@ class CommunicationChannel(ABC):
 
     @abstractmethod
     async def get_message_history(self, message_count) -> [ChatMessage]:
-        """ oldest message first """
+        """oldest message first"""
         pass
 
     @abstractmethod

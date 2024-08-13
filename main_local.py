@@ -11,6 +11,7 @@ from ARCANE.agent_factory import AgentFactory
 from channels.web.fastapi_app import FastApiApp
 import shutil
 
+
 def clear_llm_logs():
     log_folder = "llm_logs"
     if os.path.exists(log_folder):
@@ -18,47 +19,62 @@ def clear_llm_logs():
     os.makedirs(log_folder)
     print(f"Cleared contents of {log_folder}")
 
+
 def run_server(agent_config, common_actions, llm_config, port, api_key, agent_factory):
     from llm.LLM import LLM
     from channels.web.fastapi_app import FastApiApp
-    
-    logger = setup_logger(agent_config['name'])
+
+    logger = setup_logger(agent_config["name"])
     llm = LLM(logger, **llm_config)
-    agent = agent_factory.create_agent(agent_config, common_actions, llm, logger, api_key)
+    agent = agent_factory.create_agent(
+        agent_config, common_actions, llm, logger, api_key
+    )
     app = FastApiApp(agent, llm, port)
     asyncio.run(app.run())
 
+
 def main():
     load_dotenv()
-    logger = setup_logger('SYS')
+    logger = setup_logger("SYS")
 
     agent_factory = AgentFactory()
 
     # Clear LLM logs before starting
     clear_llm_logs()
 
-    anthropic_api_key = get_environment_variable('ANT_API_KEY')
-    
+    anthropic_api_key = get_environment_variable("ANT_API_KEY")
+
     agent_configs = agent_factory.load_agent_config()
     llm_config = {
-        'api_key': os.getenv('ANT_API_KEY'),
-        'model': os.getenv('CLAUDE_DEFAULT_MODEL')
+        "api_key": os.getenv("ANT_API_KEY"),
+        "model": os.getenv("CLAUDE_DEFAULT_MODEL"),
     }
 
+    common_actions = agent_configs["common_actions"]
 
-    common_actions = agent_configs['common_actions']
-    
     processes = []
 
-    for agent_config in agent_configs['agents']:
+    for agent_config in agent_configs["agents"]:
         p = multiprocessing.Process(
-            target=run_server, 
-            args=(agent_config, common_actions, llm_config, agent_config['port'], anthropic_api_key, agent_factory)
+            target=run_server,
+            args=(
+                agent_config,
+                common_actions,
+                llm_config,
+                agent_config["port"],
+                anthropic_api_key,
+                agent_factory,
+            ),
         )
         p.start()
-        processes.append((p, agent_config['name']))
-        logger.info({"event": "server_start", "name": agent_config['name'], "port": agent_config['port']})
-
+        processes.append((p, agent_config["name"]))
+        logger.info(
+            {
+                "event": "server_start",
+                "name": agent_config["name"],
+                "port": agent_config["port"],
+            }
+        )
 
     def shutdown(signal, frame):
         logger.info("Shutdown signal received.")
@@ -78,5 +94,6 @@ def main():
     except KeyboardInterrupt:
         shutdown(None, None)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()
