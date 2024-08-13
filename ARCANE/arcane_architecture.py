@@ -87,6 +87,7 @@ class ArcaneArchitecture:
         return await action.execute()
 
     async def generate_initial_goal(self) -> str:
+        # from remote_pdb import RemotePdb; RemotePdb('0.0.0.0', 5678).set_trace()
         narrative = self.global_event_log.to_narrative()
         last_message = self.get_last_message_from_log()
         
@@ -94,11 +95,11 @@ class ArcaneArchitecture:
         tool_config = self.llm.get_tool_config("set_goal", self.agent_config['name'])
         goal_response = await self.llm.create_chat_completion(goal_prompt, last_message, tool_config)
         
-        if goal_response and isinstance(goal_response, list) and len(goal_response) > 0:
-            if isinstance(goal_response[0], dict):
-                return goal_response[0].get('goal', '')
-            elif isinstance(goal_response[0], str):
-                return goal_response[0]
+        if goal_response:
+            if isinstance(goal_response, dict):
+                return goal_response.get('goal', '')
+            elif isinstance(goal_response, str):
+                return goal_response
         
         self.logger.warning("Failed to generate a valid goal. Using default.")
         return "Process the message and respond appropriately"
@@ -152,11 +153,13 @@ class ArcaneArchitecture:
             """
         goal_check_response = await self.llm.create_chat_completion(goal_check_prompt, narrative, tool_config)
         
-        if goal_check_response and isinstance(goal_check_response, list) and len(goal_check_response) > 0:
-            if isinstance(goal_check_response[0], dict):
-                achieved = goal_check_response[0].get('goal_achieved', False)
-            elif isinstance(goal_check_response[0], bool):
-                achieved = goal_check_response[0]
+        
+        # from remote_pdb import RemotePdb; RemotePdb('0.0.0.0', 5678).set_trace()
+        if goal_check_response and len(goal_check_response) > 0:
+            if isinstance(goal_check_response, dict):
+                achieved = goal_check_response.get('goal_achieved', False)
+            elif isinstance(goal_check_response, bool):
+                achieved = goal_check_response
             else:
                 achieved = False
             
@@ -187,16 +190,15 @@ class ArcaneArchitecture:
             narrative = self.global_event_log.to_narrative()
             next_action = await self.determine_next_action(goal, executed_actions)
 
-            if next_action and isinstance(next_action, list) and len(next_action) > 0:
-                action_data = next_action[0]['actions'][0]
-                self.global_event_log.add_event(Event("agent_action", action_data), self.agent_id)
+            if next_action:
+                self.global_event_log.add_event(Event("agent_action", next_action), self.agent_id)
                 
                 try:
-                    success, result = await self.execute_action(action_data, communication_channel)
-                    executed_actions.append({"action": action_data, "success": success, "result": result})
+                    success, result = await self.execute_action(next_action, communication_channel)
+                    executed_actions.append({"action": next_action, "success": success, "result": result})
                 except Exception as e:
                     self.logger.error(f"Error executing action: {str(e)}")
-                    executed_actions.append({"action": action_data, "success": False, "error": str(e)})
+                    executed_actions.append({"action": next_action, "success": False, "error": str(e)})
                     await communication_channel.send_message(f"An error occurred while processing your request: {str(e)}")
             else:
                 self.logger.warning("No valid action determined. Ending process.")
@@ -205,65 +207,107 @@ class ArcaneArchitecture:
 
         return self.global_event_log.to_narrative(), executed_actions
 
-    async def determine_next_action(self, goal: str, actions: List[Dict]) -> List[Dict[str, Any]]:
+    async def determine_next_action(self, goal: str, actions: List[Dict]) -> Optional[Dict[str, Any]]:
         action_prompt = self.create_action_prompt(goal, actions, self.global_event_log.to_narrative())
         tool_config = self.llm.get_tool_config("create_action", agent_type=self.agent_id.split('-')[0])
         action_response = await self.llm.create_chat_completion(action_prompt, self.get_last_message_from_log(), tool_config)
         
-        if action_response and isinstance(action_response, list) and len(action_response) > 0:
+        if action_response:
             return action_response
         
         self.logger.warning("Failed to determine next action. Using default.")
-        return [{"action": "send_message_to_student", "params": {"message": "I'm not sure how to proceed. Can you provide more information?"}}]
+        return {"action": "send_message_to_student", "params": {"message": "I'm not sure how to proceed. Can you provide more information?"}}
 
 
     async def execute_action(self, action_data: Dict[str, Any], communication_channel: CommunicationChannel) -> Tuple[bool, Any]:
-        action = self.parse_action(communication_channel, action_data)
-        if action is None:
-            self.logger.warning(f"Unknown action: {action_data}")
-            return False, "Unknown action"
-        
-        action_description = f"Executing {action_data['action']}"
-        await self.arcane_system.set_status("busy", action_description)
-        
         try:
+            # self.logger.debug(f"Attempting to parse action: {action_data}")
+            action = self.parse_action(communication_channel, action_data)
+            if action is None:
+                self.logger.warning(f"Unknown action: {action_data}")
+                return False, "Unknown action"
+            
+            action_description = f"Executing {action_data['action']}"
+            self.logger.debug(f"Setting status: {action_description}")
+            await self.arcane_system.set_status("busy", action_description)
+            
+            # self.logger.debug(f"Executing action: {type(action).__name__}")
             success, result = await action.execute()
+            
+            # self.logger.debug(f"Action execution complete. Success: {success}, Result: {result}")
+            
+            if isinstance(action, DelegateAndExecuteTask) and success:
+                self.logger.debug("Adding task execution event to log")
+                self.global_event_log.add_event(Event("task_execution", {"content": result}), self.agent_id)
+
+            if action_data['action'] != 'send_message_to_student' and communication_channel is not None:
+                brief_result = str(result)[:50] if result else "No result"
+                # self.logger.debug(f"Sending execution update: {action_data['action']}, {brief_result}")
+                await self.send_execution_update(communication_channel, action_data['action'], brief_result)
+            
+            return success, result
+        except Exception as e:
+            self.logger.error(f"Error executing action: {str(e)}", exc_info=True)
+            return False, str(e)
         finally:
+            self.logger.debug("Unsetting busy status")
             await self.arcane_system.unset_busy_status()
 
-        if isinstance(action, DelegateAndExecuteTask) and success:
-            self.global_event_log.add_event(Event("task_execution", {"content": result}), self.agent_id)
-    
-        
-        if action_data['action'] != 'send_message_to_student' and communication_channel is not None:
-            brief_result = str(result)[:50] if result else "No result"
-            await self.send_execution_update(communication_channel, action_data['action'], brief_result)
-        
-        return success, result
-
     def parse_action(self, communication_channel: CommunicationChannel, action_data: dict) -> Optional[Action]:
+        self.logger.debug(f"Parsing action: {action_data}")
+        
+        # Handle the unexpected nesting
+        if isinstance(action_data.get('action'), dict):
+            action_data = action_data['action']
+        
         action_name = action_data.get("action")
         params = action_data.get("params", {})
         
+        self.logger.debug(f"Action name: {action_name}, Params: {params}")
+        
         working_directory = self.agent_config.get("work_directory", "")
+        
         action_map = {
-            "run_command": lambda: QueryFileSystem(command=params.get("command", ""), work_directory=working_directory),
-            "view_file_contents": lambda: ViewFileContents(file_path=params.get("file_path", ""), work_directory=working_directory),
-            "edit_file_contents": lambda: EditFileContents(file_path=params.get("file_path", ""), content=params.get("content", ""), work_directory=working_directory),
-            "create_new_file": lambda: CreateNewFile(file_path=params.get("file_path", ""), work_directory=working_directory, content=params.get("contents", "")),
-            "run_python_file": lambda: RunPythonFile(file_path=params.get("file_path", ""), work_directory=working_directory),
-            "perplexity_search": lambda: PerplexitySearch(query=params.get("query", ""), api_key=get_environment_variable('PERPLEXITY_API_KEY')),
-            "send_message_to_student": lambda: SendMessageToStudent(communication_channel=communication_channel, message=params.get("message", "")),
-            "send_niacl_message": lambda: SendNIACLMessage(receiver=params.get("receiver", ""), message=params.get("message", ""), sender=self.agent_id, agent_config=self.agent_config),
-            "delegate_and_execute_task": lambda: DelegateAndExecuteTask(plan_name=params.get("task_name", "Unnamed Task"), plan_description=params.get("task_description", "No Description Given"), agent_id=self.agent_id, llm=self.llm, agent_factory=self.agent_factory, stratos=self.arcane_system, logger=self.logger),
-            "declare_complete": lambda: DeclareComplete(agent_id=self.agent_id, message=params.get("message", ""), files=params.get("files", []), work_directory=working_directory),
-            "visualize_image": lambda: VisualizeImage(file_path=params.get("file_path", ""), work_directory=working_directory)
+            "run_command": QueryFileSystem,
+            "view_file_contents": ViewFileContents,
+            "edit_file_contents": EditFileContents,
+            "create_new_file": CreateNewFile,
+            "run_python_file": RunPythonFile,
+            "perplexity_search": PerplexitySearch,
+            "send_message_to_student": SendMessageToStudent,
+            "send_niacl_message": SendNIACLMessage,
+            "delegate_and_execute_task": DelegateAndExecuteTask,
+            "declare_complete": DeclareComplete,
+            "visualize_image": VisualizeImage
         }
         
-        if action_name in action_map:
-            return action_map[action_name]()
-        else:
+        if action_name not in action_map:
             self.logger.warning(f"Unknown action: {action_name}")
+            return None
+        
+        action_class = action_map[action_name]
+        # self.logger.debug(f"Action class: {action_class.__name__}")
+        
+        if action_name == "run_command":
+            return action_class(command=params.get("command", ""), work_directory=working_directory)
+        elif action_name in ["view_file_contents", "run_python_file", "visualize_image"]:
+            return action_class(file_path=params.get("file_path", ""), work_directory=working_directory)
+        elif action_name == "edit_file_contents":
+            return action_class(file_path=params.get("file_path", ""), content=params.get("content", ""), work_directory=working_directory)
+        elif action_name == "create_new_file":
+            return action_class(file_path=params.get("file_path", ""), work_directory=working_directory, content=params.get("contents", ""))
+        elif action_name == "perplexity_search":
+            return action_class(query=params.get("query", ""), api_key=get_environment_variable('PERPLEXITY_API_KEY'))
+        elif action_name == "send_message_to_student":
+            return action_class(communication_channel=communication_channel, message=params.get("message", ""))
+        elif action_name == "send_niacl_message":
+            return action_class(receiver=params.get("receiver", ""), message=params.get("message", ""), sender=self.agent_id, agent_config=self.agent_config)
+        elif action_name == "delegate_and_execute_task":
+            return action_class(plan_name=params.get("task_name", "Unnamed Task"), plan_description=params.get("task_description", "No Description Given"), agent_id=self.agent_id, llm=self.llm, agent_factory=self.agent_factory, stratos=self.arcane_system, logger=self.logger)
+        elif action_name == "declare_complete":
+            return action_class(agent_id=self.agent_id, message=params.get("message", ""), files=params.get("files", []), work_directory=working_directory)
+        else:
+            self.logger.warning(f"Unhandled action: {action_name}")
             return None
 
     def get_last_message(self, sender_id: str) -> str:

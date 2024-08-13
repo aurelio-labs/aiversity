@@ -69,25 +69,24 @@ class LLM:
 
         try:
             response = self.client.messages.create(**request)
-            actions = []
+            action = None
             for content_item in response.content:
                 if hasattr(content_item, 'name') and content_item.name == tool_config['name']:
                     if hasattr(content_item, 'input') and isinstance(content_item.input, dict):
-                        actions.append(content_item.input)
+                        action = content_item.input
 
-            success = len(actions) > 0
+            success = action is not None
             self.log_request_response(request, response.dict(), success)
 
-            if not actions:
-                # from remote_pdb import RemotePdb; RemotePdb('0.0.0.0', 5678).set_trace()
-                self.logging.warning(f"No {tool_config['name']} were generated from the LLM response.")
+            if not action:
+                self.logging.warning(f"No {tool_config['name']} was generated from the LLM response.")
 
-            return actions
+            return action
 
         except Exception as e:
             self.logging.error(f"Error processing response content: {e}")
             self.log_request_response(request, str(e), False)
-            return []
+            return None
 
     def get_dynamic_tool(self, config: Dict[str, Any]):
         return {
@@ -120,27 +119,24 @@ class LLM:
         tool_configs = {
             "create_action": {
                 "name": "create_action",
-                "description": f"Create a structured action for the AI system to execute. {isolation} You are only allowed to generate one action.",
-                "output_key": "actions",
+                "description": f"Create a single structured action for the AI system to execute. {isolation}",
+                "output_key": "action",
                 "output_schema": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "action": {
-                                "type": "string",
-                                "enum": action_names,
-                                "description": "The type of action to perform"
-                            },
-                            "params": {
-                                "type": "object",
-                                "properties": {
-                                    action['name']: {"type": "object"} for action in actions
-                                }
-                            }
+                    "type": "object",
+                    "properties": {
+                        "action": {
+                            "type": "string",
+                            "enum": action_names,
+                            "description": "The type of action to perform"
                         },
-                        "required": ["action", "params"]
-                    }
+                        "params": {
+                            "type": "object",
+                            "properties": {
+                                action['name']: {"type": "object"} for action in actions
+                            }
+                        }
+                    },
+                    "required": ["action", "params"]
                 }
             },
             "set_goal": {

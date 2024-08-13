@@ -184,6 +184,7 @@ class TaskAgent:
 
     async def execute(self):
         try:
+            # from remote_pdb import RemotePdb; RemotePdb('0.0.0.0', 5678).set_trace()
             while self.action_count < self.max_actions:
                 # from remote_pdb import RemotePdb; RemotePdb('0.0.0.0', 5678).set_trace()
                 action = await self.determine_next_action()
@@ -214,10 +215,10 @@ class TaskAgent:
         
         full_prompt = f"{system_message}\n\n{action_prompt}"
         
-        action_response = await self.llm.create_chat_completion(full_prompt, context, tool_config)
+        action = await self.llm.create_chat_completion(full_prompt, context, tool_config)
         
-        if action_response and isinstance(action_response, list) and len(action_response) > 0:
-            return action_response[0].get('actions', [None])[0]
+        if action:
+            return action
         
         self.logger.warning("Failed to determine next action. Using default.")
         return None
@@ -268,15 +269,16 @@ class TaskAgent:
         4. Do not attempt to access or modify files that are not in your input or output lists.
 
         RESPONSE FORMAT:
-        Respond with a single action in JSON format, containing the action name and its parameters. For example:
+        Respond with a single action in the following format:
         {{
-            "action": "view_file_contents",
+            "action": "action_name",
             "params": {{
-                "file_path": "input_data.csv"
+                "param1": "value1",
+                "param2": "value2"
             }}
         }}
 
-        Ensure that you only use actions from the list of available actions provided and adhere to the file management guidelines.
+        Ensure that you only use actions from the list of available actions provided and include all necessary parameters for the chosen action.
         """
 
 
