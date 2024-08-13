@@ -1,5 +1,3 @@
-# File: ARCANE/planning/plan_executor.py
-
 import asyncio
 from typing import Dict, List, Any
 from datetime import datetime
@@ -9,6 +7,7 @@ from util import get_environment_variable
 from llm.LLM import LLM
 import logging
 import os
+import json
 
 MAX_AGENT_ACTIONS = 15
 
@@ -184,12 +183,24 @@ class TaskAgent:
 
     async def execute(self):
         try:
-            # from remote_pdb import RemotePdb; RemotePdb('0.0.0.0', 5678).set_trace()
             while self.action_count < self.max_actions:
                 # from remote_pdb import RemotePdb; RemotePdb('0.0.0.0', 5678).set_trace()
-                action = await self.determine_next_action()
-                # if action["action"] == "create_new_file":
-                #     from remote_pdb import RemotePdb; RemotePdb('0.0.0.0', 5678).set_trace()
+                action_wrapper = await self.determine_next_action()
+
+                if action_wrapper and isinstance(action_wrapper, dict):
+                    if 'action' in action_wrapper and 'params' in action_wrapper:
+                        # The action is already in the correct format
+                        action = action_wrapper
+                    elif 'action' in action_wrapper and isinstance(action_wrapper['action'], str):
+                        # The action is a JSON string, parse it
+                        try:
+                            action = json.loads(action_wrapper['action'])
+                        except json.JSONDecodeError:
+                            self.logger.error("Failed to parse action JSON")
+
+
+
+                
                 if action["action"] == "declare_complete":
                     return action["params"]["message"], "\n".join(self.narrative)
                 
@@ -214,14 +225,10 @@ class TaskAgent:
         tool_config = self.llm.get_tool_config("create_action", self.task_agent_config['name'], isolated_agent=True)
         
         full_prompt = f"{system_message}\n\n{action_prompt}"
+        # from remote_pdb import RemotePdb; RemotePdb('0.0.0.0', 5678).set_trace()
+        action_wrapper = await self.llm.create_chat_completion(full_prompt, context, tool_config)
         
-        action = await self.llm.create_chat_completion(full_prompt, context, tool_config)
-        
-        if action:
-            return action
-        
-        self.logger.warning("Failed to determine next action. Using default.")
-        return None
+        return action_wrapper
     
     def create_system_message(self) -> str:
         base_system_message = self.arcane_architecture.create_system_message()
@@ -269,7 +276,7 @@ class TaskAgent:
         4. Do not attempt to access or modify files that are not in your input or output lists.
 
         RESPONSE FORMAT:
-        Respond with a single action in the following format:
+        Respond with a single action in JSON format, without any additional wrapping:
         {{
             "action": "action_name",
             "params": {{
@@ -278,7 +285,7 @@ class TaskAgent:
             }}
         }}
 
-        Ensure that you only use actions from the list of available actions provided and include all necessary parameters for the chosen action.
+        Ensure that you only use actions from the list of available actions provided and include all necessary parameters for the chosen action. Do not include any explanatory text outside of this JSON structure.
         """
 
 

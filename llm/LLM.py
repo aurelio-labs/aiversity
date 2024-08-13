@@ -8,6 +8,7 @@ from util import load_actions, get_environment_variable
 import logging
 import time
 from datetime import datetime
+import anthropic
 
 class LLMMessage(TypedDict):
     role: str
@@ -41,14 +42,14 @@ class LLM:
         with open(log_file, 'w') as f:
             json.dump(log_data, f, indent=2)
 
-    async def create_chat_completion(self, system_message: str, user_message: str, tool_config: Dict[str, Any]) -> List[Dict[str, Any]]:
+    async def create_chat_completion(self, system_message: str, user_message: str, tool_config: Dict[str, Any]) -> Dict[str, Any]:
         conversation = [
             {"role": "system", "content": system_message},
             {"role": "user", "content": user_message}
         ]
         return await self.create_conversation_completion(conversation, tool_config)
 
-    async def create_conversation_completion(self, conversation: List[Dict[str, str]], tool_config: Dict[str, Any]) -> List[Dict[str, Any]]:
+    async def create_conversation_completion(self, conversation: List[Dict[str, str]], tool_config: Dict[str, Any]) -> Dict[str, Any]:
         messages = [
             {"role": "assistant" if msg["role"] == "system" else msg["role"], "content": msg["content"]}
             for msg in conversation
@@ -74,12 +75,21 @@ class LLM:
                 if hasattr(content_item, 'name') and content_item.name == tool_config['name']:
                     if hasattr(content_item, 'input') and isinstance(content_item.input, dict):
                         action = content_item.input
+                        break
+                elif isinstance(content_item, anthropic.types.TextBlock):
+                    try:
+                        action_json = json.loads(content_item.text)
+                        if isinstance(action_json, dict) and 'action' in action_json and 'params' in action_json:
+                            action = action_json
+                            break
+                    except json.JSONDecodeError:
+                        continue
 
             success = action is not None
             self.log_request_response(request, response.dict(), success)
 
             if not action:
-                self.logging.warning(f"No {tool_config['name']} was generated from the LLM response.")
+                self.logging.warning(f"No valid {tool_config['name']} was generated from the LLM response.")
 
             return action
 

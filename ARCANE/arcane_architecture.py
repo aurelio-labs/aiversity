@@ -228,7 +228,7 @@ class ArcaneArchitecture:
                 return False, "Unknown action"
             
             action_description = f"Executing {action_data['action']}"
-            self.logger.debug(f"Setting status: {action_description}")
+            # self.logger.debug(f"Setting status: {action_description}")
             await self.arcane_system.set_status("busy", action_description)
             
             # self.logger.debug(f"Executing action: {type(action).__name__}")
@@ -263,51 +263,33 @@ class ArcaneArchitecture:
         action_name = action_data.get("action")
         params = action_data.get("params", {})
         
-        self.logger.debug(f"Action name: {action_name}, Params: {params}")
+        # self.logger.debug(f"Action name: {action_name}, Params: {params}")
         
         working_directory = self.agent_config.get("work_directory", "")
         
         action_map = {
-            "run_command": QueryFileSystem,
-            "view_file_contents": ViewFileContents,
-            "edit_file_contents": EditFileContents,
-            "create_new_file": CreateNewFile,
-            "run_python_file": RunPythonFile,
-            "perplexity_search": PerplexitySearch,
-            "send_message_to_student": SendMessageToStudent,
-            "send_niacl_message": SendNIACLMessage,
-            "delegate_and_execute_task": DelegateAndExecuteTask,
-            "declare_complete": DeclareComplete,
-            "visualize_image": VisualizeImage
+            "run_command": lambda: QueryFileSystem(command=params.get("command", ""), work_directory=working_directory),
+            "view_file_contents": lambda: ViewFileContents(file_path=params.get("file_path", ""), work_directory=working_directory),
+            "edit_file_contents": lambda: EditFileContents(file_path=params.get("file_path", ""), content=params.get("content", ""), work_directory=working_directory),
+            "create_new_file": lambda: CreateNewFile(file_path=params.get("file_path", ""), work_directory=working_directory, content=params.get("contents", "")),
+            "run_python_file": lambda: RunPythonFile(file_path=params.get("file_path", ""), work_directory=working_directory),
+            "perplexity_search": lambda: PerplexitySearch(query=params.get("query", ""), api_key=get_environment_variable('PERPLEXITY_API_KEY')),
+            "send_message_to_student": lambda: SendMessageToStudent(communication_channel=communication_channel, message=params.get("message", "")),
+            "send_niacl_message": lambda: SendNIACLMessage(receiver=params.get("receiver", ""), message=params.get("message", ""), sender=self.agent_id, agent_config=self.agent_config),
+            "delegate_and_execute_task": lambda: DelegateAndExecuteTask(plan_name=params.get("task_name", "Unnamed Task"), plan_description=params.get("task_description", "No Description Given"), agent_id=self.agent_id, llm=self.llm, agent_factory=self.agent_factory, stratos=self.arcane_system, logger=self.logger),
+            "declare_complete": lambda: DeclareComplete(agent_id=self.agent_id, message=params.get("message", ""), files=params.get("files", []), work_directory=working_directory),
+            "visualize_image": lambda: VisualizeImage(file_path=params.get("file_path", ""), work_directory=working_directory)
         }
         
-        if action_name not in action_map:
-            self.logger.warning(f"Unknown action: {action_name}")
-            return None
-        
-        action_class = action_map[action_name]
-        # self.logger.debug(f"Action class: {action_class.__name__}")
-        
-        if action_name == "run_command":
-            return action_class(command=params.get("command", ""), work_directory=working_directory)
-        elif action_name in ["view_file_contents", "run_python_file", "visualize_image"]:
-            return action_class(file_path=params.get("file_path", ""), work_directory=working_directory)
-        elif action_name == "edit_file_contents":
-            return action_class(file_path=params.get("file_path", ""), content=params.get("content", ""), work_directory=working_directory)
-        elif action_name == "create_new_file":
-            return action_class(file_path=params.get("file_path", ""), work_directory=working_directory, content=params.get("contents", ""))
-        elif action_name == "perplexity_search":
-            return action_class(query=params.get("query", ""), api_key=get_environment_variable('PERPLEXITY_API_KEY'))
-        elif action_name == "send_message_to_student":
-            return action_class(communication_channel=communication_channel, message=params.get("message", ""))
-        elif action_name == "send_niacl_message":
-            return action_class(receiver=params.get("receiver", ""), message=params.get("message", ""), sender=self.agent_id, agent_config=self.agent_config)
-        elif action_name == "delegate_and_execute_task":
-            return action_class(plan_name=params.get("task_name", "Unnamed Task"), plan_description=params.get("task_description", "No Description Given"), agent_id=self.agent_id, llm=self.llm, agent_factory=self.agent_factory, stratos=self.arcane_system, logger=self.logger)
-        elif action_name == "declare_complete":
-            return action_class(agent_id=self.agent_id, message=params.get("message", ""), files=params.get("files", []), work_directory=working_directory)
+        action_creator = action_map.get(action_name)
+        if action_creator:
+            try:
+                return action_creator()
+            except Exception as e:
+                self.logger.error(f"Error creating action instance for {action_name}: {str(e)}", exc_info=True)
+                return None
         else:
-            self.logger.warning(f"Unhandled action: {action_name}")
+            self.logger.warning(f"Unknown action: {action_name}")
             return None
 
     def get_last_message(self, sender_id: str) -> str:
