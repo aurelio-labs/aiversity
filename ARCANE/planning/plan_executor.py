@@ -1,5 +1,5 @@
 import asyncio
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
 from datetime import datetime
 from ARCANE.planning.plan_structures import Plan, Level, Task
 from ARCANE.planning.plan_persistence import PlanPersistence
@@ -162,7 +162,9 @@ class TaskAgent:
             My working directory is: {self.plan_directory}
 
             Project Directory Structure and File Contents:
+            ============
             {directory_contents}
+            ============
 
             Overall Plan Overview:
             {plan_overview}
@@ -221,42 +223,51 @@ class TaskAgent:
     async def execute(self):
         try:
             while self.action_count < self.max_actions:
-                # from remote_pdb import RemotePdb; RemotePdb('0.0.0.0', 5678).set_trace()
-                action_wrapper = await self.determine_next_action()
-
-                if action_wrapper and isinstance(action_wrapper, dict):
-                    if "action" in action_wrapper and "params" in action_wrapper:
-                        # The action is already in the correct format
-                        action = action_wrapper
-                    elif "action" in action_wrapper and isinstance(
-                        action_wrapper["action"], str
-                    ):
-                        # The action is a JSON string, parse it
-                        try:
-                            action = json.loads(action_wrapper["action"])
-                        except json.JSONDecodeError:
-                            self.logger.error("Failed to parse action JSON")
+                action = await self.get_next_action_with_retry()
+                
+                if action is None:
+                    self.logger.error(f"Failed to determine next action for task {self.task.name} after retries")
+                    return f"ERROR: Failed to determine next action after retries", "\n".join(self.narrative)
 
                 if action["action"] == "declare_complete":
                     return action["params"]["message"], "\n".join(self.narrative)
 
-                success, result = await self.arcane_architecture.execute_action(
-                    action, None
-                )
-                summarized_result = self.summarize_action_result(
-                    action["action"], str(result)
-                )
-                self.narrative.append(
-                    f"Action: {action['action']} - Result: {summarized_result}"
-                )
+                success, result = await self.arcane_architecture.execute_action(action, None)
+                summarized_result = self.summarize_action_result(action["action"], str(result))
+                self.narrative.append(f"Action: {action['action']} - Result: {summarized_result}")
                 self.action_count += 1
 
-            return f"MAX_ACTIONS_REACHED: {'; '.join(self.narrative)}", "\n".join(
-                self.narrative
-            )
+            return f"MAX_ACTIONS_REACHED: {'; '.join(self.narrative)}", "\n".join(self.narrative)
         except Exception as e:
             self.logger.error(f"Error executing task {self.task.name}: {str(e)}")
             return f"Error: {str(e)}", f"Error occurred: {str(e)}"
+
+    async def get_next_action_with_retry(self, max_retries: int = 3, initial_delay: float = 2.0) -> Optional[dict]:
+        delay = initial_delay
+        for attempt in range(max_retries):
+            try:
+                action_wrapper = await self.determine_next_action()
+                
+                if action_wrapper and isinstance(action_wrapper, dict):
+                    if "action" in action_wrapper and "params" in action_wrapper:
+                        return action_wrapper
+                    elif "action" in action_wrapper and isinstance(action_wrapper["action"], str):
+                        try:
+                            return json.loads(action_wrapper["action"])
+                        except json.JSONDecodeError:
+                            self.logger.error("Failed to parse action JSON")
+                
+                if attempt < max_retries - 1:
+                    self.logger.warning(f"Retrying to determine next action (attempt {attempt + 1}/{max_retries})")
+                    await asyncio.sleep(delay)
+                    delay *= 2  # Exponential backoff
+            except Exception as e:
+                self.logger.error(f"Error determining next action (attempt {attempt + 1}/{max_retries}): {str(e)}")
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(delay)
+                    delay *= 2  # Exponential backoff
+        
+        return None  # If all retries fail
 
     #         - perplexity_search(query) - should be used for deep-dive research questions on the web. This sends an API request to perplexity and returns a deep-dive. Use sparingly.
     #        - declare_complete(message) - used when your task has been completed.

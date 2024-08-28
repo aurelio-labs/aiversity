@@ -130,32 +130,27 @@ class FastApiApp:
             data = await request.json()
             message = data.get("message", "")
             sender = data.get("sender", "")
+            copied_files = data.get("copied_files", [])
 
-            print(
-                f"Received agent message from {sender}: {message[:50]}..."
-            )  # Add this line
+            print(f"Received agent message from {sender}: {message[:50]}...")
+            print(f"Copied files: {copied_files}")  # Add this line to log received files
 
             await self.arcane_system.log_agent_message(sender, message)
 
             try:
-                narrative, executed_actions = (
-                    await self.arcane_system.process_incoming_agent_message(
-                        sender, message
-                    )
-                )
-                print(
-                    f"Processed agent message from {sender}. Actions: {len(executed_actions)}"
-                )  # Add this line
-                return JSONResponse(
-                    content={"success": True, "sender": sender}, status_code=200
-                )
+                # Pass the entire data dictionary to process_incoming_agent_message
+                narrative, executed_actions = await self.arcane_system.process_incoming_agent_message(sender, data)
+                
+                print(f"Processed agent message from {sender}. Actions: {len(executed_actions)}")
+                
+                # If there were copied files, log them
+                if copied_files:
+                    await self.arcane_system.log_copied_files(sender, copied_files)
+                
+                return JSONResponse(content={"success": True, "sender": sender}, status_code=200)
             except Exception as e:
-                print(
-                    f"Error processing agent message from {sender}: {str(e)}"
-                )  # Add this line
-                return JSONResponse(
-                    content={"success": False, "error": str(e)}, status_code=500
-                )
+                print(f"Error processing agent message from {sender}: {str(e)}")
+                return JSONResponse(content={"success": False, "error": str(e)}, status_code=500)
 
         @app.get("/chat/")
         async def chat_get(message: str, user_id: str = None):

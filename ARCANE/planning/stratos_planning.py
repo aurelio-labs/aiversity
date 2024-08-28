@@ -16,6 +16,7 @@ class DelegateAndExecuteTask(Action):
         self,
         plan_name: str,
         plan_description: str,
+        requesting_agent: str,
         agent_id: str,
         llm: LLM,
         agent_factory,
@@ -34,6 +35,7 @@ class DelegateAndExecuteTask(Action):
             os.path.join(self.workspace_root, "plans")
         )
         self.responsive_llm = LLM(logger, get_environment_variable("ANT_API_KEY"), get_environment_variable("CLAUDE_RESPONSIVE_MODEL"))
+        self.requesting_agent = requesting_agent
 
 
     async def execute(self) -> Tuple[bool, Optional[str]]:
@@ -78,8 +80,9 @@ class DelegateAndExecuteTask(Action):
                 summary_message = (
                     f"Task '{plan.name}' was delegated and executed successfully. "
                     f"Description: {plan.description}\n\n"
-                    f"Execution Summary:\n{summarized_narrative}\n\n"
-                    f"This task was broken down into subtasks and executed by specialized agents."
+                    # f"Execution Summary:\n{summarized_narrative}\n\n"
+                    f"This task was broken down into subtasks and executed by specialized agents"
+                    f"Please send back relevant files to: {self.requesting_agent}. Your goal is not achieved until any files (if necessary), have been communicated back appropriately via NIACL file handling"
                 )
             else:
                 summary_message = "Error: Unable to generate summary."
@@ -91,7 +94,7 @@ class DelegateAndExecuteTask(Action):
     async def _generate_plan_with_llm(self) -> Dict[str, Any]:
 
         tool_config = self.llm.get_tool_config(
-            "delegate_and_execute_task", self.agent_id
+            "delegate_and_execute_task", self.agent_id, isolated_agent=False
         )
         prompt = f"""
         I will create a plan for the following task: {self.plan_description}. 

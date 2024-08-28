@@ -1,3 +1,5 @@
+from datetime import datetime
+import json
 import logging
 from typing import Dict, List, Tuple, Any
 from ARCANE.agent_prompting.agent_prompts import generate_agent_prompt
@@ -9,6 +11,8 @@ from channels.communication_channel import CommunicationChannel
 import os
 import asyncio
 from collections import deque
+
+from ARCANE.personalization.personalization_service import PersonalizationService
 
 
 class ArcaneSystem:
@@ -50,6 +54,8 @@ class ArcaneSystem:
         #     self.status = "busy"
         self.current_action = None
         self.responsive_llm = LLM(logger, api_key, os.getenv("CLAUDE_RESPONSIVE_MODEL"))
+        self.personalization_service = PersonalizationService(self.responsive_llm, self.logger)
+        
 
     async def log_file_addition(self, file_name: str):
         print(f"Logging file addition: {file_name}")
@@ -80,7 +86,7 @@ class ArcaneSystem:
         I will provide a brief, polite response explaining my current status.
         I will keep the response under 50 words.
         """
-        tool_config = self.responsive_llm.get_tool_config("create_action")
+        tool_config = self.responsive_llm.get_tool_config("create_action", self.agent_id, isolated_agent=False)
         response = await self.responsive_llm.create_chat_completion(
             prompt,
             "Provide an NIACL response now. You should communicate via send_niacl_message.",
@@ -103,14 +109,14 @@ class ArcaneSystem:
         else:
             return "Unable to generate a response. The agent will continue its current task."
 
-    async def process_incoming_user_message(
-        self, communication_channel: CommunicationChannel, user_id: str
-    ) -> Tuple[str, List[Dict[str, Any]]]:
+    async def process_incoming_user_message(self, communication_channel: CommunicationChannel, user_id: str) -> Tuple[str, List[Dict[str, Any]]]:
         try:
             message = await communication_channel.get_last_message()
-            narrative, actions = await self.arcane_architecture.process_message(
-                user_id, message, communication_channel
-            )
+            
+            # Update personalization whiteboard
+            # await self.personalization_service.update_whiteboard(user_id, message)
+            
+            narrative, actions = await self.arcane_architecture.process_message(user_id, message, communication_channel)
 
             print(f"Processed message for {user_id}. Actions taken: {len(actions)}")
 
@@ -119,28 +125,65 @@ class ArcaneSystem:
             await self.handle_error(e, user_id, communication_channel)
             return f"An error occurred: {str(e)}", []
 
-    async def process_incoming_agent_message(
-        self, sender: str, message: str
-    ) -> Tuple[str, List[Dict[str, Any]]]:
-        self.message_queue.append((sender, message))
+    async def process_incoming_agent_message(self, sender: str, data: dict) -> Tuple[str, List[Dict[str, Any]]]:
+        self.message_queue.append((sender, data))
         if self.status == "busy":
             status_response = await self.get_status_response(sender)
             return status_response, []
         try:
-            # from remote_pdb import RemotePdb; RemotePdb('0.0.0.0', 5678).set_trace()
-            communication_channel = AgentCommunicationChannel(sender, message, self)
-            narrative, actions = await self.arcane_architecture.process_message(
-                sender, message, communication_channel
-            )
+            message = data.get("message", "")
+            copied_files = data.get("copied_files", [])
 
-            print(
-                f"Processed agent message from {sender}. Actions taken: {len(actions)}"
-            )
+            communication_channel = AgentCommunicationChannel(sender, message, self)
+
+            # If there are copied files, log them and personalize them
+            if copied_files:
+                await self.log_copied_files(sender, copied_files)
+                await self.personalize_copied_files(copied_files)
+
+            narrative, actions = await self.arcane_architecture.process_message(sender, message, communication_channel)
+
+            print(f"Processed agent message from {sender}. Actions taken: {len(actions)}")
 
             return narrative, actions
         except Exception as e:
             print(f"Error processing agent message: {str(e)}")
             return f"An error occurred: {str(e)}", []
+
+    async def personalize_copied_files(self, copied_files: List[str]):
+        for file_name in copied_files:
+            file_path = os.path.join(self.agent_config["work_directory"], file_name)
+            if os.path.exists(file_path):
+                with open(file_path, 'r') as f:
+                    original_content = f.read()
+                personalized_content = await self.personalization_service.personalize_file(file_path, original_content)
+                with open(file_path, 'w') as f:
+                    f.write(personalized_content)
+                self.logger.info(f"Personalized file: {file_name}")
+            else:
+                self.logger.warning(f"File not found for personalization: {file_name}")
+
+
+    async def log_copied_files(self, sender: str, copied_files: List[str]):
+        if copied_files:
+            timestamp = datetime.now().isoformat()
+            file_transfer_event = Event(
+                "file_transfer",
+                {
+                    "sender": sender,
+                    "files": copied_files,
+                    "timestamp": timestamp
+                }
+            )
+            self.arcane_architecture.global_event_log.add_event(file_transfer_event, self.agent_id)
+            
+            # Add a message to the agent's narrative
+            file_list = ", ".join(copied_files)
+            narrative_message = f"[{timestamp}] {sender} copied the following files to your directory: {file_list}"
+            self.arcane_architecture.global_event_log.add_event(
+                Event("agent_message", {"content": narrative_message, "sender": "System"}),
+                self.agent_id
+            )
 
     async def log_agent_message(self, sender: str, message: str):
         # Remove the event logging from here - was causing duplicate messages
@@ -189,38 +232,6 @@ class ArcaneSystem:
             action["action"]
             for action in self.common_actions + self.agent_config["specific_actions"]
         ]
-
-    async def evaluate_task_progress(self, response: str) -> Dict[str, Any]:
-        prompt = f"""
-        You are a Stratos clone overseeing a task. You've received the following response from an agent:
-
-        {response}
-
-        Evaluate whether the task is complete based on this response. If it's not complete, provide feedback for the agent.
-
-        Your evaluation should be in the following format:
-        {{
-            "is_complete": boolean,
-            "feedback": "Your feedback here if not complete, or 'Task completed successfully' if complete"
-        }}
-        """
-
-        tool_config = self.llm.get_tool_config("create_action", self.agent_id)
-        evaluation_response = await self.llm.create_chat_completion(
-            self.agent_prompt, prompt, tool_config
-        )
-
-        if (
-            evaluation_response
-            and isinstance(evaluation_response, list)
-            and len(evaluation_response) > 0
-        ):
-            return evaluation_response[0]
-        else:
-            return {
-                "is_complete": False,
-                "feedback": "Unable to evaluate task progress. Please provide more information.",
-            }
 
     def has_new_message(self) -> bool:
         return len(self.message_queue) > 0

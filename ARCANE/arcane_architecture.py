@@ -79,7 +79,7 @@ class GlobalEventLog:
                 )
             elif event.type == "agent_action":
                 action_data = json.dumps(event.data, indent=2)
-                narrative.append(f"[{event.timestamp}] Agent action:\n{action_data}")
+                narrative.append(f"[{event.timestamp}] Agent action (completed successfully):\n{action_data}")
             elif event.type == "goal_set":
                 narrative.append(f"[{event.timestamp}] Goal set: {event.data['goal']}")
             elif event.type == "task_execution":
@@ -295,20 +295,21 @@ class ArcaneArchitecture:
         self, action_data: Dict[str, Any], communication_channel: CommunicationChannel
     ) -> Tuple[bool, Any]:
         try:
-            # self.logger.debug(f"Attempting to parse action: {action_data}")
             action = self.parse_action(communication_channel, action_data)
             if action is None:
                 self.logger.warning(f"Unknown action: {action_data}")
                 return False, "Unknown action"
 
             action_description = f"Executing {action_data['action']}"
-            # self.logger.debug(f"Setting status: {action_description}")
             await self.arcane_system.set_status("busy", action_description)
 
-            # self.logger.debug(f"Executing action: {type(action).__name__}")
-            success, result = await action.execute()
-
-            # self.logger.debug(f"Action execution complete. Success: {success}, Result: {result}")
+            if isinstance(action, SendNIACLMessage):
+                # For NIACL messages, execute asynchronously and return immediately
+                asyncio.create_task(self._execute_niacl_action(action, action_data))
+                return True, "NIACL message sent asynchronously. Do not wait for a response. This message will be processed asynchronously."
+            else:
+                # For other actions, wait for completion as before
+                success, result = await action.execute()
 
             if isinstance(action, DelegateAndExecuteTask) and success:
                 self.logger.debug("Adding task execution event to log")
@@ -321,7 +322,6 @@ class ArcaneArchitecture:
                 and communication_channel is not None
             ):
                 brief_result = str(result)[:50] if result else "No result"
-                # self.logger.debug(f"Sending execution update: {action_data['action']}, {brief_result}")
                 await self.send_execution_update(
                     communication_channel, action_data["action"], brief_result
                 )
@@ -333,6 +333,17 @@ class ArcaneArchitecture:
         finally:
             self.logger.debug("Unsetting busy status")
             await self.arcane_system.unset_busy_status()
+
+    async def _execute_niacl_action(self, action: SendNIACLMessage, action_data: Dict[str, Any]):
+        try:
+            success, result = await action.execute()
+            if not success:
+                self.logger.error(f"NIACL message failed: {result}")
+            else:
+                self.logger.info(f"NIACL message sent successfully: {result}")
+        
+        except Exception as e:
+            self.logger.error(f"Error in asynchronous NIACL execution: {str(e)}", exc_info=True)
 
     def parse_action(
         self, communication_channel: CommunicationChannel, action_data: dict
@@ -379,14 +390,16 @@ class ArcaneArchitecture:
                 message=params.get("message", ""),
             ),
             "send_niacl_message": lambda: SendNIACLMessage(
-                receiver=params.get("receiver", ""),
+                receiver=params.get("receiver", "").lower(),
                 message=params.get("message", ""),
-                sender=self.agent_id,
+                sender=self.agent_id.lower(),
                 agent_config=self.agent_config,
+                files=params.get("files", [])
             ),
             "delegate_and_execute_task": lambda: DelegateAndExecuteTask(
                 plan_name=params.get("task_name", "Unnamed Task"),
                 plan_description=params.get("task_description", "No Description Given"),
+                requesting_agent=params.get("requesting_agent", ""),
                 agent_id=self.agent_id,
                 llm=self.llm,
                 agent_factory=self.agent_factory,
@@ -494,7 +507,9 @@ class ArcaneArchitecture:
         IMPORTANT: After any action that retrieves information or performs a task, you MUST include a send_message_to_student action (for user messages) or other appropriate action.
 
         Current working directory structure and file contents:
+        ============
         {directory_contents}
+        ============
         """
 
     def get_directory_contents(self):
@@ -544,3 +559,9 @@ class ArcaneArchitecture:
     ):
         update_message = f"    Executed: {action_name} - {brief_result[:50]}..."
         await communication_channel.send_execution_update(update_message)
+
+    async def handle_error(self, error: Exception, sender_id: str, communication_channel: CommunicationChannel) -> None:
+        error_message = f"An error occurred: {str(error)}"
+        self.logger.error(error_message)
+        if communication_channel:
+            await communication_channel.send_message(error_message)

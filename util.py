@@ -32,6 +32,8 @@ def parse_json(input_string):
 def load_actions(agent_type):
     with open("action_definitions.yaml", "r") as file:
         all_actions = yaml.safe_load(file)
+    
+    agent_type = agent_type.split("-")[0]
 
     actions = all_actions["common_actions"]
     if agent_type in all_actions["agent_specific_actions"]:

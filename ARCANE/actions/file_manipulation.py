@@ -2,12 +2,13 @@ from ARCANE.actions.action import Action
 from channels.communication_channel import CommunicationChannel
 import asyncio
 import subprocess
-from typing import Tuple, Optional
+from typing import List, Tuple, Optional
 import os
 import aiohttp
 import base64
 from anthropic import Anthropic
 from util import get_environment_variable
+import shutil
 
 
 class QueryFileSystem(Action):
@@ -236,12 +237,15 @@ class UpdateWhiteboard(Action):
         return "Update whiteboard"
 
 
+
+
 class SendNIACLMessage(Action):
-    def __init__(self, receiver: str, message: str, sender: str, agent_config: dict):
+    def __init__(self, receiver: str, message: str, sender: str, agent_config: dict, files: List[str] = None):
         self.receiver = receiver
         self.message = message
         self.sender = sender
         self.agent_config = agent_config
+        self.files = files or []
 
     async def execute(self) -> Tuple[bool, Optional[str]]:
         try:
@@ -250,28 +254,40 @@ class SendNIACLMessage(Action):
                 return False, f"Unable to find port for agent {self.receiver}"
 
             url = f"http://localhost:{receiver_port}/agent-message/"
+            # from remote_pdb import RemotePdb; RemotePdb('0.0.0.0', 5678).set_trace()
+            # Copy files to receiver's workspace
+            copied_files = await self.copy_files_to_receiver()
 
-            # Create a new event loop for the asynchronous HTTP request
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
+            payload = {
+                "message": self.message,
+                "sender": self.sender.lower(),
+                "copied_files": copied_files
+            }
 
-            async def send_request():
-                async with aiohttp.ClientSession() as session:
-                    async with session.post(
-                        url, json={"message": self.message, "sender": self.sender}
-                    ) as response:
-                        await response.text()  # We don't wait for the response content
+            async with aiohttp.ClientSession() as session:
+                async with session.post(url, json=payload) as response:
+                    await response.text()
 
-            # Run the request in the background
-            asyncio.create_task(send_request())
-
-            return (
-                True,
-                f"Message sent asynchronously to {self.receiver}. Don't wait for a response, the agent is processing this.",
-            )
+            return True, f"Message sent and files copied asynchronously to {self.receiver}."
         except Exception as e:
             print(str(e))
             return False, f"Error sending NIACL message: {str(e)}"
+
+    async def copy_files_to_receiver(self):
+        copied_files = []
+        receiver_workspace = os.path.join("aiversity_workspaces", self.receiver)
+        os.makedirs(receiver_workspace, exist_ok=True)
+
+        for file_path in self.files:
+            try:
+                file_name = os.path.basename(file_path)
+                destination = os.path.join(receiver_workspace, file_name)
+                shutil.copy2(os.path.join(os.getcwd(),'aiversity_workspaces',self.sender,file_path), os.path.join(os.getcwd(),destination))
+                copied_files.append(file_name)
+            except Exception as e:
+                print(f"Error copying file {file_path}: {str(e)}")
+        
+        return copied_files
 
     def get_agent_port(self, agent_id: str) -> Optional[int]:
         # Extract the port from the agent ID

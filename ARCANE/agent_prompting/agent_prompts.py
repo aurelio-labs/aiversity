@@ -78,7 +78,7 @@ def generate_action_example(agent_type):
  {
  "action": "send_niacl_message",
  "params": {
-   "receiver": "STRATOS-5001",
+   "receiver": "stratos-5001",
    "message": "Hello STRATOS, I need your assistance with planning a study schedule."
  }
  },
@@ -101,7 +101,7 @@ def generate_action_example(agent_type):
  {
  "action": "send_niacl_message",
  "params": {
-   "receiver": "Iris-5000",
+   "receiver": "iris-5000",
    "message": "I've created a study plan. Please inform the student that it's ready."
  }
  }
