@@ -16,6 +16,7 @@ import asyncio
 import uuid
 import json
 import logging
+import os
 
 from fastapi import File, UploadFile, Form
 
@@ -27,6 +28,7 @@ class FastApiApp:
         self.chatConnectionManager = WebSocketConnectionManager()
         self.llmConnectionManager = WebSocketConnectionManager()
         self.user_connections = {}  # Store WebSocket connections by user_id
+        self.folderUpdateManager = WebSocketConnectionManager()
 
         self.app.add_exception_handler(Exception, self.custom_exception_handler)
 
@@ -66,6 +68,65 @@ class FastApiApp:
     def setup_routes(self):
         app = self.app
 
+        @app.get("/folder-content/")
+        async def get_folder_content(path: str = ""):
+            full_path = os.path.join(self.arcane_system.agent_config["work_directory"], path)
+            if not os.path.exists(full_path):
+                raise HTTPException(status_code=404, detail="Path not found")
+            
+            content = []
+            for item in os.listdir(full_path):
+                item_path = os.path.join(full_path, item)
+                content.append({
+                    "name": item,
+                    "type": "folder" if os.path.isdir(item_path) else "file"
+                })
+            return {"content": content, "current_path": path}
+
+        @app.get("/file-content/")
+        async def get_file_content(path: str):
+            full_path = os.path.join(self.arcane_system.agent_config["work_directory"], path)
+            if not os.path.exists(full_path) or not os.path.isfile(full_path):
+                raise HTTPException(status_code=404, detail="File not found")
+            
+            try:
+                with open(full_path, 'r') as file:
+                    content = file.read()
+                return {"content": content}
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"Error reading file: {str(e)}")
+
+        @app.post("/save-file/")
+        async def save_file(file_data: dict):
+            path = file_data.get("path")
+            content = file_data.get("content")
+            full_path = os.path.join(self.arcane_system.agent_config["work_directory"], path)
+            
+            try:
+                with open(full_path, 'w') as file:
+                    file.write(content)
+                return {"status": "success"}
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"Error saving file: {str(e)}")
+
+        @app.websocket("/ws-folder-updates")
+        async def websocket_folder_updates(websocket: WebSocket):
+            user_id = str(uuid.uuid4())  # Generate a unique ID for this connection
+            await self.folderUpdateManager.connect(user_id, websocket)
+            try:
+                while True:
+                    await websocket.receive_text()
+                    # This loop keeps the connection alive
+            except Exception as e:
+                print(f"WebSocket error for user {user_id}: {str(e)}")
+            finally:
+                await self.folderUpdateManager.disconnect(user_id)
+
+        async def broadcast_file_change(self, change_type: str, file_name: str):
+            message = {"type": "file_change", "change_type": change_type, "file": file_name}
+            await self.folderUpdateManager.broadcast(message)
+
+
         @app.websocket("/ws-chat/{user_id}")
         async def websocket_endpoint_chat(websocket: WebSocket, user_id: str):
             await self.chatConnectionManager.connect(user_id, websocket)
@@ -83,22 +144,28 @@ class FastApiApp:
             await self.llmConnectionManager.connect(websocket)
 
         @app.post("/workspace/file-added/")
-        async def file_added(file: str = Form(...)):
-            print(f"Received file addition notification: {file}")  # Debug print
+        async def file_added(self, file: str = Form(...)):
+            print(f"Received file addition notification: {file}")
             await self.arcane_system.log_file_addition(file)
+            await self.broadcast_file_change("file_added", file)
             return {"filename": file, "status": "logged"}
 
         @app.post("/workspace/file-deleted/")
-        async def file_deleted(file: str = Form(...)):
-            print(f"Received file deletion notification: {file}")  # Debug print
+        async def file_deleted(self, file: str = Form(...)):
+            print(f"Received file deletion notification: {file}")
             await self.arcane_system.log_file_deletion(file)
+            await self.broadcast_file_change("file_deleted", file)
             return {"filename": file, "status": "logged"}
 
         @app.post("/chat/")
         async def chat(request: Request):
             data = await request.json()
             message = data.get("message", "")
-            user_id = data.get("user_id", str(uuid.uuid4()))
+            user_id = data.get("user_id")
+            
+            if not user_id:
+                user_id = str(uuid.uuid4())
+            
             messages: [ChatMessage] = [create_chat_message("api-user", message)]
             communication_channel = WebCommunicationChannel(
                 messages, self.chatConnectionManager, self.arcane_system, user_id

@@ -1,0 +1,1892 @@
+Project Directory Structure:
+========================================
+src/
+    reportWebVitals.js
+    App.css
+    index.js
+    index.css
+    App.test.js
+    setupTests.js
+    logo.svg
+    App.js
+    components/
+        MessageBubble.js
+        ChatWindow.css
+        CircularSlider.js
+        SharedWorkspace.css
+        ChatWindow.js
+        SharedWorkspace.js
+        TypingIndicator.js
+        InputArea.js
+        FolderView.js
+        InputArea.css
+        TypingIndicator.css
+        FolderView.css
+        Slider.js
+        MessageBubble.css
+    animations/
+        animations.css
+========================================
+
+File Contents:
+========================================
+
+File: reportWebVitals.js
+----------------------------------------
+const reportWebVitals = onPerfEntry => {
+  if (onPerfEntry && onPerfEntry instanceof Function) {
+    import('web-vitals').then(({ getCLS, getFID, getFCP, getLCP, getTTFB }) => {
+      getCLS(onPerfEntry);
+      getFID(onPerfEntry);
+      getFCP(onPerfEntry);
+      getLCP(onPerfEntry);
+      getTTFB(onPerfEntry);
+    });
+  }
+};
+
+export default reportWebVitals;
+
+========================================
+
+File: App.css
+----------------------------------------
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+  100% { transform: translateY(0px); }
+}
+
+@keyframes glow {
+  0% { box-shadow: 0 0 5px #e94560; }
+  50% { box-shadow: 0 0 20px #e94560; }
+  100% { box-shadow: 0 0 5px #e94560; }
+}
+
+.App {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  background: linear-gradient(135deg, #1a1a2e, #16213e);
+  overflow: hidden;
+  background-size: 400% 400%;
+  animation: gradientBG 15s ease infinite;
+}
+
+@keyframes gradientBG {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.app-container {
+  display: flex;
+  position: relative;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+
+.main-interface {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  z-index: 2; /* Ensure it's above the agent actions panel */
+}
+
+.phone-container {
+  width: 375px;
+  height: 667px;
+  background-color: #0f3460;
+  border-radius: 40px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3), 0 15px 12px rgba(0, 0, 0, 0.22);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  z-index: 2;
+  border: 2px solid #e94560;
+  transition: all 0.3s ease;
+  animation: float 6s ease-in-out infinite, glow 3s ease-in-out infinite alternate;
+}
+
+.phone-container:hover {
+  transform: scale(1.02);
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4), 0 20px 16px rgba(0, 0, 0, 0.3);
+}
+
+.phone-notch {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 150px;
+  height: 30px;
+  background-color: #0f3460;
+  border-bottom-left-radius: 15px;
+  border-bottom-right-radius: 15px;
+  z-index: 3;
+}
+
+.status-bar {
+  height: 30px;
+  background-color: rgba(15, 52, 96, 0.8);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 15px;
+  color: #e94560;
+  font-size: 14px;
+  font-family: 'Courier New', monospace;
+}
+
+.status-bar span:first-child {
+  padding-left: 30px;
+  font-weight: bold;
+}
+
+.connection-status {
+  display: flex;
+  align-items: center;
+}
+
+.connection-status i {
+  margin-right: 5px;
+}
+
+.connection-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #ff4757;
+  margin-left: 5px;
+  transition: background-color 0.3s ease;
+}
+
+.connection-dot.connected {
+  background-color: #2ed573;
+}
+
+.control-panel {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding: 10px;
+  background-color: rgba(15, 52, 96, 0.8);
+}
+
+.control-btn {
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 50%;
+  background-color: #e94560;
+  color: #fff;
+  font-size: 18px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.control-btn:hover {
+  transform: scale(1.1);
+  box-shadow: 0 0 15px rgba(233, 69, 96, 0.5);
+}
+
+.toggle-workspace {
+  background: linear-gradient(135deg, #e94560, #0f3460);
+}
+
+.clear-chat {
+  background: linear-gradient(135deg, #0f3460, #e94560);
+}
+
+.clear-icon {
+  position: relative;
+  width: 20px;
+  height: 20px;
+}
+
+.clear-icon::before,
+.clear-icon::after {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 2px;
+  background-color: #fff;
+  top: 50%;
+  left: 0;
+  transform: translateY(-50%);
+}
+
+.clear-icon::before {
+  transform: translateY(-50%) rotate(45deg);
+}
+
+.clear-icon::after {
+  transform: translateY(-50%) rotate(-45deg);
+}
+
+.clear-chat:hover .clear-icon::before,
+.clear-chat:hover .clear-icon::after {
+  transform: translateY(-50%) rotate(135deg);
+}
+
+.clear-chat:hover .clear-icon::after {
+  transform: translateY(-50%) rotate(45deg);
+}
+
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(233, 69, 96, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(233, 69, 96, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(233, 69, 96, 0); }
+}
+
+.control-btn:active {
+  animation: pulse 0.3s;
+}
+========================================
+
+File: index.js
+----------------------------------------
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import './index.css';
+import App from './App';
+import reportWebVitals from './reportWebVitals';
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);
+
+// If you want to start measuring performance in your app, pass a function
+// to log results (for example: reportWebVitals(console.log))
+// or send to an analytics endpoint. Learn more: https://bit.ly/CRA-vitals
+reportWebVitals();
+
+========================================
+
+File: index.css
+----------------------------------------
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+========================================
+
+File: App.test.js
+----------------------------------------
+import { render, screen } from '@testing-library/react';
+import App from './App';
+
+test('renders learn react link', () => {
+  render(<App />);
+  const linkElement = screen.getByText(/learn react/i);
+  expect(linkElement).toBeInTheDocument();
+});
+
+========================================
+
+File: setupTests.js
+----------------------------------------
+// jest-dom adds custom jest matchers for asserting on DOM nodes.
+// allows you to do things like:
+// expect(element).toHaveTextContent(/react/i)
+// learn more: https://github.com/testing-library/jest-dom
+import '@testing-library/jest-dom';
+
+========================================
+
+File: App.js
+----------------------------------------
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import './App.css';
+import ChatWindow from './components/ChatWindow';
+import SharedWorkspace from './components/SharedWorkspace';
+import FolderView from './components/FolderView';
+
+function App() {
+  const [folderContent, setFolderContent] = useState([]);
+  const [currentPath, setCurrentPath] = useState('/');
+
+  const [messages, setMessages] = useState([]);
+  const [isWorkspaceOpen, setIsWorkspaceOpen] = useState(false);
+  const [agentActions, setAgentActions] = useState([]);
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const [userId, setUserId] = useState(null);
+  const [isConnected, setIsConnected] = useState(false);
+  const socketRef = useRef(null);
+
+  const setupWebSocket = useCallback((id) => {
+    socketRef.current = new WebSocket(`ws://localhost:5000/ws-chat/${id}`);
+
+    socketRef.current.onopen = () => {
+      console.log('WebSocket connection established');
+      setIsConnected(true);
+    };
+
+    socketRef.current.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      console.log('Received message from WebSocket:', data);
+      if (data.content) {
+        setMessages(prevMessages => [...prevMessages, { text: data.content, isUser: false }]);
+      }
+      if (data.type === 'execution_update' || data.type === 'actions') {
+        setAgentActions(prevActions => [...prevActions, data]);
+      }
+    };
+
+    socketRef.current.onclose = () => {
+      console.log('WebSocket connection closed');
+      setIsConnected(false);
+      // Attempt to reconnect after a delay
+      setTimeout(() => setupWebSocket(id), 3000);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (userId) {
+      setupWebSocket(userId);
+    }
+
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.close();
+      }
+    };
+  }, [userId, setupWebSocket]);
+
+  useEffect(() => {
+    const timeInterval = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(timeInterval);
+  }, []);
+
+  const addMessage = useCallback(async (message, isUser) => {
+    setMessages(prevMessages => [...prevMessages, { text: message, isUser }]);
+
+    if (isUser) {
+      try {
+        const response = await fetch('http://localhost:5000/chat/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ message, user_id: userId || '' }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to send message');
+        }
+
+        const data = await response.json();
+        if (!userId && data.user_id) {
+          setUserId(data.user_id);
+          console.log('User ID set:', data.user_id);
+        }
+      } catch (error) {
+        console.error('Error sending message:', error);
+        setMessages(prevMessages => [...prevMessages, { text: 'Error: Failed to send message. Please try again.', isUser: false }]);
+      }
+    }
+  }, [userId]);
+
+  const clearChat = useCallback(() => {
+    setMessages([]);
+    setAgentActions([]);
+  }, []);
+
+  const toggleWorkspace = useCallback(() => {
+    setIsWorkspaceOpen(prev => !prev);
+  }, []);
+
+  const formatTime = useCallback((date) => {
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }, []);
+
+  const fetchFolderContent = useCallback(async (path) => {
+    try {
+      const response = await fetch(`http://localhost:5000/folder-content`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ path, user_id: userId }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch folder content');
+      }
+
+      const data = await response.json();
+      setFolderContent(data.content);
+      setCurrentPath(path);
+    } catch (error) {
+      console.error('Error fetching folder content:', error);
+    }
+  }, [userId]);
+
+  useEffect(() => {
+    if (userId) {
+      fetchFolderContent('/');
+    }
+  }, [userId, fetchFolderContent]);
+
+  const handleFileAction = useCallback(async (action, path, type) => {
+    try {
+      const response = await fetch(`http://localhost:5000/file-action`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ action, path, type, user_id: userId }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to perform file action');
+      }
+
+      // Refresh folder content after action
+      fetchFolderContent(currentPath);
+
+      // Add a message to the chat about the file action
+      const actionMessage = `File ${action}: ${path}`;
+      setMessages(prevMessages => [...prevMessages, { text: actionMessage, isUser: false }]);
+    } catch (error) {
+      console.error('Error performing file action:', error);
+    }
+  }, [userId, currentPath, fetchFolderContent]);
+
+  return (
+    <div className="App">
+      <div className="app-container">
+        <SharedWorkspace isOpen={isWorkspaceOpen} actions={agentActions} />
+        <div className="main-interface">
+          <div className="phone-container">
+            <div className="phone-notch"></div>
+            <div className="status-bar">
+              <span>{formatTime(currentTime)}</span>
+              <span className="connection-status">
+                <i className="fas fa-signal"></i>
+                <i className="fas fa-wifi"></i>
+                <i className="fas fa-battery-full"></i>
+                <span className={`connection-dot ${isConnected ? 'connected' : ''}`}></span>
+              </span>
+            </div>
+            <ChatWindow messages={messages} addMessage={addMessage} />
+            <div className="control-panel">
+              <button className="control-btn toggle-workspace" onClick={toggleWorkspace} title="Toggle Agent Actions">
+                {isWorkspaceOpen ? '《' : '》'}
+              </button>
+              <button className="control-btn clear-chat" onClick={clearChat} title="Clear Chat">
+                <span className="clear-icon">×</span>
+              </button>
+              <FolderView />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default App;
+========================================
+
+File: components/MessageBubble.js
+----------------------------------------
+import React, { useEffect, useState } from 'react';
+import './MessageBubble.css';
+
+const MessageBubble = ({ message, isUser }) => {
+  const [opacity, setOpacity] = useState(0);
+  const [transform, setTransform] = useState('translateY(20px)');
+
+  useEffect(() => {
+    // Start the animation after a short delay
+    const timer = setTimeout(() => {
+      setOpacity(1);
+      setTransform('translateY(0)');
+    }, 50);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  return (
+    <div 
+      className={`message-bubble ${isUser ? 'user' : 'bot'}`}
+      style={{
+        opacity: opacity,
+        transform: transform,
+        transition: 'opacity 0.5s ease, transform 0.5s ease'
+      }}
+    >
+      {message}
+    </div>
+  );
+};
+
+export default MessageBubble;
+========================================
+
+File: components/ChatWindow.css
+----------------------------------------
+.chat-window {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background-color: #F5F5F5;
+}
+
+.messages-container {
+  flex-grow: 1;
+  overflow-y: auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+.message-row {
+  display: flex;
+  margin-bottom: 10px;
+}
+
+.message-row.user {
+  justify-content: flex-end;
+  background-color: #F5F5F5;
+}
+
+.message-row.bot {
+  justify-content: flex-start;
+  background-color: #F5F5F5;
+}
+
+.input-area {
+  padding: 15px;
+  background-color: #FFFFFF;
+  border-top: 1px solid #E0E0E0;
+}
+
+.message-bubble {
+  max-width: 70%;
+  padding: 12px 18px;
+  border-radius: 18px;
+  word-wrap: break-word;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  opacity: 0;
+  transform: translateY(20px);
+  animation: fadeInUp 0.3s forwards;
+}
+
+@keyframes fadeInUp {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.message-bubble.user {
+  background-image: linear-gradient(to right, #007AFF, #00C6FF);
+  color: white;
+  border-bottom-right-radius: 4px;
+}
+
+.message-bubble.bot {
+  background-image: linear-gradient(to left, #E5E5EA, #D1D1D6);
+  color: #333;
+  border-bottom-left-radius: 4px;
+}
+
+.input-area {
+  display: flex;
+  padding: 15px;
+  background-color: #F5F5F5;
+  border-top: 1px solid #E5E5EA;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.input-area input {
+  flex-grow: 1;
+  padding: 12px 15px;
+  border: 1px solid #E5E5EA;
+  border-radius: 20px;
+  margin-right: 10px;
+  font-size: 16px;
+  transition: all 0.3s ease;
+}
+
+.input-area input:focus {
+  outline: none;
+  border-color: #007AFF;
+  box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.2);
+}
+
+.input-area button {
+  width: 50px;
+  height: 50px;
+  background-color: #007AFF;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.input-area button:hover {
+  background-color: #0056b3;
+  transform: scale(1.05);
+}
+
+.input-area button::before {
+  content: '\27A4';
+  font-size: 24px;
+}
+
+.typing-indicator {
+  display: flex;
+  padding: 12px 18px;
+  background-color: #E5E5EA;
+  border-radius: 18px;
+  margin-bottom: 15px;
+  align-self: flex-start;
+  opacity: 0;
+  transform: translateY(20px);
+  animation: fadeInUp 0.3s forwards, fadeOutDown 0.3s forwards;
+  animation-delay: 0s, 2s;
+}
+
+@keyframes fadeOutDown {
+  to {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+}
+
+.typing-indicator .dot {
+  width: 8px;
+  height: 8px;
+  background-color: #999;
+  border-radius: 50%;
+  margin: 0 2px;
+  animation: bounce 0.8s infinite;
+}
+
+.typing-indicator .dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.typing-indicator .dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+========================================
+
+File: components/CircularSlider.js
+----------------------------------------
+import React, { useState, useRef, useEffect } from 'react';
+
+const CircularSlider = ({ value, onChange }) => {
+  const [isDragging, setIsDragging] = useState(false);
+  const sliderRef = useRef(null);
+
+  const handleMouseDown = () => setIsDragging(true);
+  const handleMouseUp = () => setIsDragging(false);
+
+  const handleMouseMove = (event) => {
+    if (!isDragging) return;
+
+    const slider = sliderRef.current;
+    const rect = slider.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+
+    const angle = Math.atan2(event.clientY - centerY, event.clientX - centerX);
+    let newValue = ((angle + Math.PI) / (2 * Math.PI)) * 100;
+
+    // Adjust the range to start from the top
+    newValue = (newValue + 25) % 100;
+
+    onChange(newValue);
+  };
+
+  useEffect(() => {
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging]);
+
+  const rotation = (value / 100) * 360;
+
+  return (
+    <div
+      ref={sliderRef}
+      onMouseDown={handleMouseDown}
+      style={{
+        width: '100px',
+        height: '100px',
+        borderRadius: '50%',
+        border: '2px solid #CC785C',
+        position: 'relative',
+        cursor: 'pointer'
+      }}
+    >
+      <div
+        style={{
+          position: 'absolute',
+          top: '0',
+          left: '50%',
+          width: '2px',
+          height: '50%',
+          background: '#CC785C',
+          transformOrigin: 'bottom',
+          transform: `translateX(-50%) rotate(${rotation}deg)`
+        }}
+      />
+    </div>
+  );
+};
+
+export default CircularSlider;
+========================================
+
+File: components/SharedWorkspace.css
+----------------------------------------
+.shared-workspace {
+  width: 300px;
+  height: 570px; /* Reduced height to avoid the bottom corner issue */
+  background-color: rgba(15, 52, 96, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 20px 0 0 20px;
+  box-shadow: -5px 0 15px rgba(0, 0, 0, 0.2);
+  position: absolute;
+  right: 375px; /* Position it behind the chat window */
+  top: 50%;
+  transform: translateY(-50%) translateX(100%);
+  transition: transform 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55), opacity 0.3s ease;
+  padding: 20px;
+  z-index: 1; /* Ensure it's behind the chat window */
+  border: 1px solid rgba(233, 69, 96, 0.3);
+  color: #fff;
+  font-family: 'Roboto', sans-serif;
+  overflow: hidden;
+  opacity: 0;
+}
+
+.shared-workspace::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 50px;
+  background: linear-gradient(to top, rgba(15, 52, 96, 1), rgba(15, 52, 96, 0));
+  pointer-events: none;
+}
+
+.shared-workspace.open {
+  transform: translateY(-50%) translateX(0);
+  opacity: 1;
+  box-shadow: -5px 0 15px rgba(233, 69, 96, 0.2), -1px 0 5px rgba(233, 69, 96, 0.4);
+}
+
+@keyframes glowingBorder {
+  from { box-shadow: 0 0 5px rgba(233, 69, 96, 0.5), 0 0 10px rgba(233, 69, 96, 0.5), inset 0 0 5px rgba(233, 69, 96, 0.5); }
+  to { box-shadow: 0 0 10px rgba(233, 69, 96, 0.8), 0 0 20px rgba(233, 69, 96, 0.8), inset 0 0 10px rgba(233, 69, 96, 0.8); }
+}
+
+.shared-workspace h2 {
+  text-align: center;
+  margin-bottom: 20px;
+  font-size: 1.4em;
+  color: #e94560;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  text-shadow: 0 0 10px rgba(233, 69, 96, 0.5);
+  overflow: hidden;
+  border-right: 2px solid #e94560;
+  white-space: nowrap;
+  margin: 0 auto;
+  letter-spacing: 3px;
+  animation: typing 3.5s steps(30, end), blink-caret 0.5s step-end infinite;
+}
+
+@keyframes typing {
+  from { width: 0 }
+  to { width: 100% }
+}
+
+@keyframes blink-caret {
+  from, to { border-color: transparent }
+  50% { border-color: #e94560 }
+}
+
+.action-feed {
+  height: calc(100% - 50px);
+  overflow-y: auto;
+  scroll-behavior: smooth;
+  padding-right: 10px;
+}
+
+.action-entry {
+  background-color: rgba(255, 255, 255, 0.1);
+  margin-bottom: 10px;
+  padding: 10px;
+  border-radius: 10px;
+  font-size: 0.9em;
+  line-height: 1.4;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  opacity: 0.7;
+}
+
+.action-entry:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+  transform: translateX(5px);
+  opacity: 1;
+}
+
+.action-entry.highlighted {
+  animation: highlightPulse 2s ease-in-out;
+}
+
+@keyframes highlightPulse {
+  0%, 100% { background-color: rgba(255, 255, 255, 0.1); }
+  50% { background-color: rgba(233, 69, 96, 0.3); }
+}
+
+.action-icon {
+  font-size: 1.5em;
+  margin-right: 10px;
+  width: 30px;
+  text-align: center;
+}
+
+.action-text {
+  flex: 1;
+}
+
+/* Scrollbar styles */
+.action-feed::-webkit-scrollbar {
+  width: 8px;
+}
+
+.action-feed::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+.action-feed::-webkit-scrollbar-thumb {
+  background: #e94560;
+  border-radius: 4px;
+}
+
+.action-feed::-webkit-scrollbar-thumb:hover {
+  background: #ff6b81;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.action-entry {
+  animation: fadeIn 0.5s ease-out forwards;
+}
+========================================
+
+File: components/ChatWindow.js
+----------------------------------------
+import React, { useState, useEffect, useRef } from 'react';
+import './ChatWindow.css';
+import MessageBubble from './MessageBubble';
+import InputArea from './InputArea';
+import TypingIndicator from './TypingIndicator';
+
+const ChatWindow = ({ messages, addMessage }) => {
+  const [isTyping, setIsTyping] = useState(false);
+  const [timeoutId, setTimeoutId] = useState(null);
+  const messagesEndRef = useRef(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+    
+    // If a new message is received, clear the typing indicator and timeout
+    if (messages.length > 0 && !messages[messages.length - 1].isUser) {
+      setIsTyping(false);
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+        setTimeoutId(null);
+      }
+    }
+  }, [messages, timeoutId]);
+
+  const handleSend = async (message) => {
+    await addMessage(message, true);
+    setIsTyping(true);
+    
+    // Set a timeout to hide the typing indicator if no response is received
+    const newTimeoutId = setTimeout(() => {
+      setIsTyping(false);
+      addMessage("Sorry, I didn't receive a response. Please try again.", false);
+    }, 100000); // 10 seconds timeout
+
+    setTimeoutId(newTimeoutId);
+  };
+
+  return (
+    <div className="chat-window">
+      <div className="messages-container">
+        {messages.map((msg, index) => (
+          <div key={index} className={`message-row ${msg.isUser ? 'user' : 'bot'}`}>
+            <MessageBubble message={msg.text} isUser={msg.isUser} />
+          </div>
+        ))}
+        {isTyping && (
+          <div className="message-row bot">
+            <TypingIndicator />
+          </div>
+        )}
+        <div ref={messagesEndRef} />
+      </div>
+      <InputArea onSend={handleSend} />
+    </div>
+  );
+};
+
+export default ChatWindow;
+========================================
+
+File: components/SharedWorkspace.js
+----------------------------------------
+import React, { useEffect, useRef, useState } from 'react';
+import './SharedWorkspace.css';
+
+const SharedWorkspace = ({ isOpen, actions }) => {
+  const actionFeedRef = useRef(null);
+  const [highlightedAction, setHighlightedAction] = useState(null);
+
+  useEffect(() => {
+    if (actionFeedRef.current) {
+      actionFeedRef.current.scrollTop = actionFeedRef.current.scrollHeight;
+    }
+    if (actions.length > 0) {
+      setHighlightedAction(actions.length - 1);
+      setTimeout(() => setHighlightedAction(null), 2000);
+    }
+  }, [actions]);
+
+  const formatAction = (action, index) => {
+    if (typeof action === 'string') {
+      try {
+        const parsedAction = JSON.parse(action);
+        return formatParsedAction(parsedAction, index);
+      } catch (error) {
+        console.error('Error parsing action:', error);
+        return action;
+      }
+    } else if (action.type === 'execution_update') {
+      return formatAction(action.data, index);
+    }
+    return JSON.stringify(action);
+  };
+
+  const formatParsedAction = (parsedAction, index) => {
+    const { action, params } = parsedAction;
+    const isHighlighted = index === highlightedAction;
+    let icon, description;
+
+    switch (action) {
+      case 'run_command':
+        icon = '🖥️';
+        description = `Ran command: ${params.command}`;
+        break;
+      case 'view_file_contents':
+        icon = '📄';
+        description = `Viewed file: ${params.file_path}`;
+        break;
+      case 'edit_file_contents':
+        icon = '✏️';
+        description = `Edited file: ${params.file_path}`;
+        break;
+      case 'create_new_file':
+        icon = '📝';
+        description = `Created new file: ${params.file_path}`;
+        break;
+      case 'run_python_file':
+        icon = '🐍';
+        description = `Ran Python file: ${params.file_path}`;
+        break;
+      case 'perplexity_search':
+        icon = '🔍';
+        description = `Searched: ${params.query}`;
+        break;
+      case 'send_message_to_student':
+        icon = '➡️';
+        description = `Sent message to student`;
+        break;
+      case 'send_niacl_message':
+        icon = '📨';
+        description = `Sent NIACL message to: ${params.receiver}`;
+        break;
+      case 'visualize_image':
+        icon = '🖼️';
+        description = `Visualized image: ${params.file_path}`;
+        break;
+      case 'delegate_and_execute_task':
+        icon = '📋';
+        description = `Delegated task: ${params.task_name}`;
+        break;
+      case 'declare_complete':
+        icon = '✅';
+        description = `Declared task complete`;
+        break;
+      default:
+        icon = '❓';
+        description = `${action}: ${JSON.stringify(params)}`;
+    }
+
+    return (
+      <div key={index} className={`action-entry ${isHighlighted ? 'highlighted' : ''}`}>
+        <span className="action-icon">{icon}</span>
+        <span className="action-text">{description}</span>
+      </div>
+    );
+  };
+
+  return (
+    <div className={`shared-workspace ${isOpen ? 'open' : ''}`}>
+      <h2>Agent Actions</h2>
+      <div className="action-feed" ref={actionFeedRef}>
+        {actions.map((action, index) => formatAction(action, index))}
+      </div>
+    </div>
+  );
+};
+
+export default SharedWorkspace;
+========================================
+
+File: components/TypingIndicator.js
+----------------------------------------
+import React, { useEffect, useState } from 'react';
+import './TypingIndicator.css';
+
+const TypingIndicator = () => {
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    const showTimer = setTimeout(() => setIsVisible(true), 100);
+    const hideTimer = setTimeout(() => setIsVisible(false), 2000);
+    
+    return () => {
+      clearTimeout(showTimer);
+      clearTimeout(hideTimer);
+    };
+  }, []);
+
+  if (!isVisible) return null;
+
+  return (
+    <div className="typing-indicator">
+      <div className="dots">
+        <span className="dot"></span>
+        <span className="dot"></span>
+        <span className="dot"></span>
+      </div>
+    </div>
+  );
+};
+
+export default TypingIndicator;
+========================================
+
+File: components/InputArea.js
+----------------------------------------
+import React, { useState } from 'react';
+import './InputArea.css';
+
+const InputArea = ({ onSend }) => {
+  const [message, setMessage] = useState('');
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (message.trim()) {
+      onSend(message);
+      setMessage('');
+    }
+  };
+
+  return (
+    <form className="input-area" onSubmit={handleSubmit}>
+      <input
+        type="text"
+        value={message}
+        onChange={(e) => setMessage(e.target.value)}
+        placeholder="Type a message..."
+      />
+      <button type="submit" aria-label="Send message">
+        <span className="send-icon">➤</span>
+      </button>
+    </form>
+  );
+};
+
+export default InputArea;
+========================================
+
+File: components/FolderView.js
+----------------------------------------
+import React, { useState, useEffect, useRef } from 'react';
+import './FolderView.css';
+
+const FolderView = () => {
+  const IRIS_ROOT = '/Users/rob/Github/MSC/aiversity/aiversity_workspaces/Iris-5000/';
+  const [isOpen, setIsOpen] = useState(false);
+  const [currentPath, setCurrentPath] = useState('');
+  const [folderContent, setFolderContent] = useState([]);
+  const [newItems, setNewItems] = useState([]);
+  const [selectedItems, setSelectedItems] = useState([]);
+  const [editingFile, setEditingFile] = useState(null);
+  const [fileContent, setFileContent] = useState('');
+  const folderContentRef = useRef(null);
+  const wsRef = useRef(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchFolderContent(currentPath);
+      setupWebSocket();
+    }
+    return () => {
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
+    };
+  }, [isOpen, currentPath]);
+
+  const setupWebSocket = () => {
+    wsRef.current = new WebSocket('ws://localhost:5000/ws-folder-updates');
+    wsRef.current.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      if (data.type === 'file_change') {
+        if (data.change_type === 'file_added' || data.change_type === 'file_deleted') {
+          setNewItems(prev => [...prev, data.file]);
+          setTimeout(() => {
+            setNewItems(prev => prev.filter(item => item !== data.file));
+            fetchFolderContent(currentPath);
+          }, 3000); // Remove highlight after 3 seconds
+        }
+      }
+    };
+  };
+
+  const fetchFolderContent = async (path) => {
+    try {
+      const fullPath = IRIS_ROOT + path;
+      const response = await fetch(`http://localhost:5000/folder-content/?path=${encodeURIComponent(fullPath)}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch folder content');
+      }
+      const data = await response.json();
+      setFolderContent(data.content);
+      setCurrentPath(path);
+    } catch (error) {
+      console.error('Error fetching folder content:', error);
+    }
+  };
+
+  const fetchFileContent = async (fileName) => {
+    try {
+      const fullPath = IRIS_ROOT + currentPath + fileName;
+      const response = await fetch(`http://localhost:5000/file-content/?path=${encodeURIComponent(fullPath)}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch file content');
+      }
+      const data = await response.json();
+      return data.content;
+    } catch (error) {
+      console.error('Error fetching file content:', error);
+      return '';
+    }
+  };
+
+  const handleItemClick = (item) => {
+    if (item.type === 'folder') {
+      setCurrentPath(prevPath => {
+        if (item.name === '..') {
+          const parts = prevPath.split('/').filter(Boolean);
+          parts.pop();
+          return parts.length ? `${parts.join('/')}/` : '';
+        } else {
+          return `${prevPath}${item.name}/`;
+        }
+      });
+    } else {
+      handleAction('view', item);
+    }
+  };
+
+  const handleAction = async (action, file) => {
+    if (action === 'view' || action === 'edit') {
+      try {
+        const content = await fetchFileContent(file.name);
+        setEditingFile({ ...file, content });
+        setFileContent(content);
+      } catch (error) {
+        console.error('Error fetching file content:', error);
+      }
+    } else if (action === 'delete') {
+      // Implement delete functionality
+      console.log('Delete functionality not implemented yet');
+    }
+  };
+
+  const handleSaveFile = async () => {
+    if (!editingFile) return;
+
+    try {
+      const fullPath = IRIS_ROOT + currentPath + editingFile.name;
+      const response = await fetch('http://localhost:5000/save-file/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          path: fullPath,
+          content: fileContent,
+        }),
+      });
+      if (!response.ok) {
+        throw new Error('Failed to save file');
+      }
+      setEditingFile(null);
+      fetchFolderContent(currentPath);
+    } catch (error) {
+      console.error('Error saving file:', error);
+    }
+  };
+
+  const renderFileItem = (item, index) => (
+    <div
+      id={`file-item-${item.name}`}
+      key={index}
+      className={`file-item ${newItems.includes(item.name) ? 'new-item' : ''} ${
+        selectedItems.includes(item) ? 'selected' : ''
+      }`}
+      onClick={() => handleItemClick(item)}
+      style={{animationDelay: `${index * 0.05}s`}}
+    >
+      <div className="file-icon">
+        {item.type === 'folder' ? '📁' : '📄'}
+      </div>
+      <div className="file-name">{item.name}</div>
+    </div>
+  );
+
+  const renderBreadcrumbs = () => {
+    const parts = currentPath.split('/').filter(Boolean);
+    return (
+      <div className="breadcrumbs">
+        <span onClick={() => setCurrentPath('')}>Iris-5000</span>
+        {parts.map((part, index) => (
+          <React.Fragment key={index}>
+            <span className="separator">/</span>
+            <span onClick={() => setCurrentPath(parts.slice(0, index + 1).join('/') + '/')}>
+              {part}
+            </span>
+          </React.Fragment>
+        ))}
+      </div>
+    );
+  };
+
+  return (
+    <>
+      <div className="folder-container">
+        <button className={`folder-icon ${isOpen ? 'spin' : ''}`} onClick={() => setIsOpen(!isOpen)}>
+          📁
+        </button>
+      </div>
+      <div className={`folder-view-overlay ${isOpen ? 'open' : ''}`}>
+        <div className="folder-view">
+          <div className="folder-header">
+            {renderBreadcrumbs()}
+            <button className="close-folder" onClick={() => setIsOpen(false)}>✕</button>
+          </div>
+          <div
+            ref={folderContentRef}
+            className="folder-content"
+          >
+            {currentPath !== '' && renderFileItem({ name: '..', type: 'folder' }, 'up')}
+            {folderContent.map((item, index) => renderFileItem(item, index))}
+          </div>
+        </div>
+      </div>
+      <div className={`file-editor-overlay ${editingFile ? 'open' : ''}`}>
+        <div className="file-editor">
+          <h2>{editingFile?.name}</h2>
+          <textarea
+            value={fileContent}
+            onChange={(e) => setFileContent(e.target.value)}
+          ></textarea>
+          <div className="editor-actions">
+            <button onClick={handleSaveFile}>Save</button>
+            <button onClick={() => setEditingFile(null)}>Cancel</button>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+};
+
+export default FolderView;
+========================================
+
+File: components/InputArea.css
+----------------------------------------
+.input-area {
+  display: flex;
+  padding: 15px;
+  background-color: #F5F5F5;
+  border-top: 1px solid #E5E5EA;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.input-area input {
+  flex-grow: 1;
+  padding: 12px 15px;
+  border: 1px solid #E5E5EA;
+  border-radius: 20px;
+  margin-right: 10px;
+  font-size: 16px;
+  transition: all 0.3s ease;
+}
+
+.input-area input:focus {
+  outline: none;
+  border-color: #007AFF;
+  box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.2);
+}
+
+.input-area button {
+  width: 50px;
+  height: 50px;
+  background-color: #007AFF;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.input-area button:hover {
+  background-color: #0056b3;
+  transform: scale(1.05);
+}
+
+.send-icon {
+  font-size: 24px;
+}
+========================================
+
+File: components/TypingIndicator.css
+----------------------------------------
+.typing-indicator {
+  background-color: #E5E5EA;
+  border-radius: 18px;
+  padding: 10px 15px;
+  display: inline-block;
+  margin-bottom: 10px;
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+.dots {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  background-color: #999;
+  border-radius: 50%;
+  margin: 0 2px;
+  animation: bounce 1.4s infinite ease-in-out both;
+}
+
+.dot:nth-child(1) {
+  animation-delay: -0.32s;
+}
+
+.dot:nth-child(2) {
+  animation-delay: -0.16s;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes bounce {
+  0%, 80%, 100% { 
+    transform: scale(0);
+  } 
+  40% { 
+    transform: scale(1.0);
+  }
+}
+========================================
+
+File: components/FolderView.css
+----------------------------------------
+.folder-container {
+  position: fixed;
+  right: 0px;
+  top: 30px;
+  z-index: 1000;
+}
+
+.folder-icon {
+  font-size: 24px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.3s ease;
+}
+
+.folder-icon:hover {
+  transform: scale(1.1);
+}
+
+.folder-icon.spin {
+  animation: spin 0.5s linear;
+}
+
+@keyframes spin {
+  100% { transform: rotate(360deg); }
+}
+
+.folder-view-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.folder-view-overlay.open {
+  opacity: 1;
+  visibility: visible;
+}
+
+.folder-view {
+  width: 80%;
+  height: 80%;
+  background: linear-gradient(135deg, rgba(255, 240, 211, 0.95), rgba(255, 220, 170, 0.95));
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 20px;
+  display: flex;
+  flex-direction: column;
+  padding: 30px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  transform: scale(0.9) translateY(-50px);
+  transition: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  overflow: hidden;
+}
+
+.folder-view-overlay.open .folder-view {
+  animation: folderOpen 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
+}
+
+.folder-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.2);
+  padding: 15px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  border-bottom: 2px solid rgba(0, 0, 0, 0.1);
+}
+
+.current-path {
+  font-weight: bold;
+  font-size: 1.2em;
+  color: #333;
+  text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.5);
+}
+
+.close-folder {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #333;
+  transition: transform 0.3s ease;
+}
+
+.close-folder:hover {
+  transform: rotate(90deg);
+}
+
+.folder-content {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 25px;
+  padding: 20px;
+  overflow-y: auto;
+  max-height: calc(100% - 100px);
+}
+
+.file-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  cursor: pointer;
+  padding: 15px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(5px);
+  transition: all 0.3s ease;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+  animation: fileItemAppear 0.5s ease-out forwards;
+}
+
+.file-item:hover {
+  transform: translateY(-5px) scale(1.05);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+.file-item.selected {
+  background: rgba(0, 123, 255, 0.2);
+  border: 2px solid #007bff;
+}
+
+.file-icon {
+  font-size: 48px;
+  margin-bottom: 10px;
+  transition: all 0.3s ease;
+}
+
+.file-item:hover .file-icon {
+  transform: scale(1.1);
+}
+
+.file-name {
+  font-size: 14px;
+  word-break: break-word;
+  max-width: 100%;
+}
+
+@keyframes popIn {
+  0% { transform: scale(0.8) translateY(20px); opacity: 0; }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+.new-item {
+  animation: popIn 0.5s ease-out;
+}
+
+.action-buttons {
+  display: flex;
+  justify-content: center;
+  padding: 20px;
+  background-color: rgba(255, 255, 255, 0.8);
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.action-buttons button {
+  margin: 0 10px;
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #007bff, #0056b3);
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 16px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: bold;
+}
+
+.action-buttons button:hover {
+  background-color: #0056b3;
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+
+.file-editor-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1001;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  backdrop-filter: blur(5px);
+}
+
+.file-editor-overlay.open {
+  opacity: 1;
+  visibility: visible;
+}
+
+.file-editor {
+  background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+  padding: 30px;
+  border-radius: 15px;
+  width: 90%;
+  max-width: 1000px;
+  height: 90%;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
+  transform: scale(0.9) translateY(-50px);
+  transition: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.file-editor-overlay.open .file-editor {
+  transform: scale(1) translateY(0);
+}
+
+.file-editor h2 {
+  margin-top: 0;
+  margin-bottom: 20px;
+  font-size: 24px;
+  color: #333;
+}
+
+.file-editor textarea {
+  flex-grow: 1;
+  margin-bottom: 20px;
+  font-family: 'Fira Code', monospace;
+  font-size: 16px;
+  line-height: 1.5;
+  padding: 15px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  resize: none;
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.editor-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.editor-actions button {
+  margin-left: 15px;
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #28a745, #218838);
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 16px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: bold;
+}
+
+.editor-actions button:hover {
+  background-color: #218838;
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+
+.editor-actions button:last-child {
+  background: linear-gradient(135deg, #dc3545, #c82333);
+}
+
+.editor-actions button:last-child:hover {
+  background-color: #c82333;
+}
+
+@keyframes folderOpen {
+  0% { transform: scale(0.9) translateY(-50px); opacity: 0; }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+@keyframes fileItemAppear {
+  0% { transform: scale(0.8) translateY(20px); opacity: 0; }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+.breadcrumbs {
+  display: flex;
+  align-items: center;
+  font-size: 1em;
+  color: #333;
+  text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.5);
+}
+
+.breadcrumbs span {
+  cursor: pointer;
+  transition: color 0.3s ease;
+}
+
+.breadcrumbs span:hover {
+  color: #007bff;
+}
+
+.breadcrumbs .separator {
+  margin: 0 5px;
+  color: #999;
+}
+========================================
+
+File: components/Slider.js
+----------------------------------------
+import React from 'react';
+
+const Slider = ({ min, max, value, onChange }) => {
+  return (
+    <input
+      type="range"
+      min={min}
+      max={max}
+      value={value}
+      onChange={(e) => onChange(parseInt(e.target.value))}
+      className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+    />
+  );
+};
+
+export default Slider;
+========================================
+
+File: components/MessageBubble.css
+----------------------------------------
+.message-bubble {
+  max-width: 70%;
+  padding: 12px 18px;
+  border-radius: 18px;
+  word-wrap: break-word;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  margin-bottom: 10px;
+}
+
+.message-bubble.user {
+  background-color: #007AFF;
+  color: white;
+  border-bottom-right-radius: 4px;
+  align-self: flex-end;
+}
+
+.message-bubble.bot {
+  background-color: #E5E5EA;
+  color: #333;
+  border-bottom-left-radius: 4px;
+  align-self: flex-start;
+}
+
+/* Additional transition styles */
+.message-bubble.transitioning {
+  background-color: #007AFF; /* The initial blue during the transition */
+}
+
+/* Smooth the movement slightly during transitions */
+.message-bubble.user.transitioning {
+  transform: translate(10px, -20px);
+}
+
+.user {
+  align-self: flex-end;
+  background-color: #007AFF;
+  color: white;
+}
+
+.bot {
+  align-self: flex-start;
+  background-color: #E5E5EA;
+  color: black;
+}
+
+@keyframes wobble {
+  0% { transform: translateX(0%); }
+  15% { transform: translateX(-5%) rotate(-5deg); }
+  30% { transform: translateX(4%) rotate(3deg); }
+  45% { transform: translateX(-3%) rotate(-3deg); }
+  60% { transform: translateX(2%) rotate(2deg); }
+  75% { transform: translateX(-1%) rotate(-1deg); }
+  100% { transform: translateX(0%); }
+}
+
+.wobble {
+  display: inline-block;
+  animation: wobble 0.5s ease;
+}
+========================================
+
+File: animations/animations.css
+----------------------------------------
+
+========================================

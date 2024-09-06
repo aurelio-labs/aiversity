@@ -10,6 +10,7 @@ import time
 from datetime import datetime
 import anthropic
 
+from anthropic.types import TextBlock, ToolUseBlock
 
 class LLMMessage(TypedDict):
     role: str
@@ -113,21 +114,37 @@ class LLM:
             "max_tokens": 4000,
             "tools": [tool],
         }
-
         try:
             response = self.client.messages.create(**request)
             action = None
             for content_item in response.content:
-                if (
-                    hasattr(content_item, "name")
-                    and content_item.name == tool_config["name"]
-                ):
-                    if hasattr(content_item, "input") and isinstance(
-                        content_item.input, dict
-                    ):
-                        action = content_item.input
+                # Check for ToolUseBlock
+                if isinstance(content_item, ToolUseBlock):
+                    if content_item.name != 'create_action':
+                        if 'action' in content_item.input and 'params' in content_item.input['action']:
+                            action = content_item.input['action']['action']
+                            params = content_item.input['action']['params']
+                            action = {"action": action, "params": params}
+                        else:
+                            action = content_item.input
                         break
-                elif isinstance(content_item, anthropic.types.TextBlock):
+                    elif content_item.name == 'create_action':
+                        action = content_item.input['action']['action']
+                        params = content_item.input['action']['params']
+                        action = {"action": action, "params": params}
+                    else:
+                        if 'action' in content_item.input and 'params' in content_item.input['action']:
+                            action = content_item.input['action']['action']
+                            params = content_item.input['action']['params']
+                            action = {"action": action, "params": params}
+                        else:
+                            action = content_item.input['action']['action']
+                            params = content_item.input['action']['params']
+                            action = {"action": action, "params": params}
+                        break
+
+                # Check for TextBlock with JSON
+                elif isinstance(content_item, TextBlock):
                     try:
                         action_json = json.loads(content_item.text)
                         if (
@@ -143,10 +160,13 @@ class LLM:
             success = action is not None
             self.log_request_response(request, response.dict(), success)
 
+            
+
             if not action:
                 self.logging.warning(
                     f"No valid {tool_config['name']} was generated from the LLM response."
                 )
+                from remote_pdb import RemotePdb; RemotePdb('0.0.0.0', 5678).set_trace()
 
             return action
 
@@ -221,7 +241,7 @@ class LLM:
             },
             "goal_check": {
                 "name": "goal_check",
-                "description": "Check if the current goal has been achieved. IMPORTANT: A goal is not considered fully achieved until the results or completion of tasks have been communicated to the user via a send_message_to_student action.",
+                "description": "Check if the current goal has been achieved. IMPORTANT: A goal is not considered fully achieved until the results or completion of tasks have been communicated to the user via a send_message_to_student action. A goal check should prevent further messages being sent to the user, i.e. if we've sent a message, it's best to wait for a response - so we should mark the goal as achieved to prevent repeated messages, as the agent will be forced to act if goal is marked as not achieved i.e. if the last agent action is send_message_to_student, we should mark the goal as achieved typically.",
                 "output_key": "goal_achieved",
                 "output_schema": {
                     "type": "boolean",

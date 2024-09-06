@@ -1,0 +1,37 @@
+Day 1: Introduction to Python and Basic Syntax
+- What is Python and why use it
+- Installing Python and setting up an IDE (e.g., IDLE or VS Code)
+- Print statements and basic data types (int, float, string)
+- Variables and simple operation
+ 
+day 2: Control Structures
+- If statements and boolean logic
+- For loops
+- While loops
+- Basic input/output with input() function
+ 
+Day 3: Functions and Modules
+- Defining and calling functions
+- Parameters and return values
+- Built-in functions
+- Importing and using basic modules (e.g., math, random)
+ 
+Day 4: Data Structures
+- Lists: creating, accessing, modifying
+- List methods and operations
+- Dictionaries: creating, accessing, modifying
+- Dictionary methods
+ 
+Day 5: File I/O and Error Handling
+- Reading from and writing to files
+- Working with CSV files
+- Try/except blocks for error handling
+ 
+Day 6: Introduction to Object-Oriented Programming
+- Classes and objects
+- Attributes and methods
+- Creating simple classes
+ 
+Day 7: Mini Project and Review
+- Applying concepts in a small project (e.g., a simple text-based game or calculator)
+- Review and Q&A session

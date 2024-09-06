@@ -282,7 +282,7 @@ class ArcaneArchitecture:
 
         if action_response:
             return action_response
-
+        
         self.logger.warning("Failed to determine next action. Using default.")
         return {
             "action": "send_message_to_student",
@@ -317,14 +317,8 @@ class ArcaneArchitecture:
                     Event("task_execution", {"content": result}), self.agent_id
                 )
 
-            if (
-                action_data["action"] != "send_message_to_student"
-                and communication_channel is not None
-            ):
-                brief_result = str(result)[:50] if result else "No result"
-                await self.send_execution_update(
-                    communication_channel, action_data["action"], brief_result
-                )
+            if action_data["action"] != "send_message_to_student" and communication_channel is not None:
+                await self.send_execution_update(communication_channel, action_data)
 
             return success, result
         except Exception as e:
@@ -554,10 +548,33 @@ class ArcaneArchitecture:
         self.logger.info("Shutting down ArcaneArchitecture")
         # Add any cleanup code here, such as saving state or closing connections
 
-    async def send_execution_update(
-        self, communication_channel, action_name, brief_result
-    ):
-        update_message = f"    Executed: {action_name} - {brief_result[:50]}..."
+    async def send_execution_update(self, communication_channel, action_data):
+        # Ensure action_data is a dictionary
+        if isinstance(action_data, str):
+            try:
+                action_data = json.loads(action_data)
+            except json.JSONDecodeError:
+                self.logger.error(f"Invalid action data: {action_data}")
+                return
+
+        # Extract action and params, handling potential nesting
+        if 'action' in action_data and isinstance(action_data['action'], dict):
+            action = action_data['action'].get('action', 'unknown')
+            params = action_data['action'].get('params', {})
+        else:
+            action = action_data.get('action', 'unknown')
+            params = action_data.get('params', {})
+
+        # For send_message_to_student, truncate the message
+        if action == 'send_message_to_student' and 'message' in params:
+            params['message'] = params['message'][:50] + '...' if len(params['message']) > 50 else params['message']
+
+        # Construct the update message
+        update_message = json.dumps({
+            'action': action,
+            'params': params
+        })
+
         await communication_channel.send_execution_update(update_message)
 
     async def handle_error(self, error: Exception, sender_id: str, communication_channel: CommunicationChannel) -> None:

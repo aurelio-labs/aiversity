@@ -1,0 +1,198 @@
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+  100% { transform: translateY(0px); }
+}
+
+@keyframes glow {
+  0% { box-shadow: 0 0 5px #e94560; }
+  50% { box-shadow: 0 0 20px #e94560; }
+  100% { box-shadow: 0 0 5px #e94560; }
+}
+
+.App {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  background: linear-gradient(135deg, #1a1a2e, #16213e);
+  overflow: hidden;
+  background-size: 400% 400%;
+  animation: gradientBG 15s ease infinite;
+}
+
+@keyframes gradientBG {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.app-container {
+  display: flex;
+  position: relative;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+
+.main-interface {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  z-index: 2; /* Ensure it's above the agent actions panel */
+}
+
+.phone-container {
+  width: 375px;
+  height: 667px;
+  background-color: #0f3460;
+  border-radius: 40px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3), 0 15px 12px rgba(0, 0, 0, 0.22);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  z-index: 2;
+  border: 2px solid #e94560;
+  transition: all 0.3s ease;
+  animation: float 6s ease-in-out infinite, glow 3s ease-in-out infinite alternate;
+}
+
+.phone-container:hover {
+  transform: scale(1.02);
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4), 0 20px 16px rgba(0, 0, 0, 0.3);
+}
+
+.phone-notch {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 150px;
+  height: 30px;
+  background-color: #0f3460;
+  border-bottom-left-radius: 15px;
+  border-bottom-right-radius: 15px;
+  z-index: 3;
+}
+
+.status-bar {
+  height: 30px;
+  background-color: rgba(15, 52, 96, 0.8);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 15px;
+  color: #e94560;
+  font-size: 14px;
+  font-family: 'Courier New', monospace;
+}
+
+.status-bar span:first-child {
+  padding-left: 30px;
+  font-weight: bold;
+}
+
+.connection-status {
+  display: flex;
+  align-items: center;
+}
+
+.connection-status i {
+  margin-right: 5px;
+}
+
+.connection-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #ff4757;
+  margin-left: 5px;
+  transition: background-color 0.3s ease;
+}
+
+.connection-dot.connected {
+  background-color: #2ed573;
+}
+
+.control-panel {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding: 10px;
+  background-color: rgba(15, 52, 96, 0.8);
+}
+
+.control-btn {
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 50%;
+  background-color: #e94560;
+  color: #fff;
+  font-size: 18px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.control-btn:hover {
+  transform: scale(1.1);
+  box-shadow: 0 0 15px rgba(233, 69, 96, 0.5);
+}
+
+.toggle-workspace {
+  background: linear-gradient(135deg, #e94560, #0f3460);
+}
+
+.clear-chat {
+  background: linear-gradient(135deg, #0f3460, #e94560);
+}
+
+.clear-icon {
+  position: relative;
+  width: 20px;
+  height: 20px;
+}
+
+.clear-icon::before,
+.clear-icon::after {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 2px;
+  background-color: #fff;
+  top: 50%;
+  left: 0;
+  transform: translateY(-50%);
+}
+
+.clear-icon::before {
+  transform: translateY(-50%) rotate(45deg);
+}
+
+.clear-icon::after {
+  transform: translateY(-50%) rotate(-45deg);
+}
+
+.clear-chat:hover .clear-icon::before,
+.clear-chat:hover .clear-icon::after {
+  transform: translateY(-50%) rotate(135deg);
+}
+
+.clear-chat:hover .clear-icon::after {
+  transform: translateY(-50%) rotate(45deg);
+}
+
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(233, 69, 96, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(233, 69, 96, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(233, 69, 96, 0); }
+}
+
+.control-btn:active {
+  animation: pulse 0.3s;
+}

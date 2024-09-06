@@ -136,10 +136,13 @@ class ArcaneSystem:
 
             communication_channel = AgentCommunicationChannel(sender, message, self)
 
-            # If there are copied files, log them and personalize them
+            # If there are copied files, log them and personalize them if the receiver is iris-5000 and the files are .txt
             if copied_files:
                 await self.log_copied_files(sender, copied_files)
-                await self.personalize_copied_files(copied_files)
+                if self.agent_id == "iris-5000":
+                    txt_files = [file for file in copied_files if file.endswith('.txt')]
+                    if txt_files:
+                        await self.personalize_copied_files(txt_files)
 
             narrative, actions = await self.arcane_architecture.process_message(sender, message, communication_channel)
 

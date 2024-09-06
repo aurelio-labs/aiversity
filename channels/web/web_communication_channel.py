@@ -22,8 +22,22 @@ class WebCommunicationChannel(CommunicationChannel):
         print(f"WebCommunicationChannel.send_message for user {self.user_id}: {text}")
         chat_message = create_chat_message(self.arcane_system.name, text)
         await self.web_socket.send_message(self.user_id, chat_message)
-        # await self.send_text_to_pi(text)
         print("WebCommunicationChannel sent message!")
+
+
+    async def send_to_frontend(self, message):
+        try:
+            response = await asyncio.get_running_loop().run_in_executor(
+                None,
+                lambda: requests.post(
+                    "http://localhost:3001/api/receive-message",
+                    json={"message": message}
+                )
+            )
+            response.raise_for_status()
+            print(f"Message sent directly to frontend: {message}")
+        except requests.exceptions.RequestException as e:
+            print(f"Error sending message to frontend: {e}")
 
     @staticmethod
     async def send_text_to_pi(text):

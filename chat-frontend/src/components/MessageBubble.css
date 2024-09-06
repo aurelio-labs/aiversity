@@ -1,0 +1,66 @@
+.message-bubble {
+  max-width: 70%;
+  padding: 12px 18px;
+  border-radius: 18px;
+  word-wrap: break-word;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  margin-bottom: 10px;
+}
+
+.message-bubble.user {
+  background-color: #007AFF;
+  color: white;
+  border-bottom-right-radius: 4px;
+  align-self: flex-end;
+}
+
+.message-bubble.bot {
+  background-color: #E5E5EA;
+  color: #333;
+  border-bottom-left-radius: 4px;
+  align-self: flex-start;
+}
+
+.message-bubble pre {
+  font-family: inherit;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  margin: 0;
+}
+
+/* Additional transition styles */
+.message-bubble.transitioning {
+  background-color: #007AFF; /* The initial blue during the transition */
+}
+
+/* Smooth the movement slightly during transitions */
+.message-bubble.user.transitioning {
+  transform: translate(10px, -20px);
+}
+
+.user {
+  align-self: flex-end;
+  background-color: #007AFF;
+  color: white;
+}
+
+.bot {
+  align-self: flex-start;
+  background-color: #E5E5EA;
+  color: black;
+}
+
+@keyframes wobble {
+  0% { transform: translateX(0%); }
+  15% { transform: translateX(-5%) rotate(-5deg); }
+  30% { transform: translateX(4%) rotate(3deg); }
+  45% { transform: translateX(-3%) rotate(-3deg); }
+  60% { transform: translateX(2%) rotate(2deg); }
+  75% { transform: translateX(-1%) rotate(-1deg); }
+  100% { transform: translateX(0%); }
+}
+
+.wobble {
+  display: inline-block;
+  animation: wobble 0.5s ease;
+}

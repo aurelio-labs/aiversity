@@ -95,7 +95,8 @@ def generate_action_example(agent_type):
  "action": "delegate_and_execute_task",
  "params": {
    "task_name": "Create study schedule",
-   "task_description": "Create a study schedule for the upcoming exams"
+   "task_description": "Create a study schedule for the upcoming exams",
+   "requesting_agent": "iris-5000"
  }
  },
  {

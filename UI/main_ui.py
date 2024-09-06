@@ -291,7 +291,7 @@ class SharedWorkspace(QWidget):
 
             # Copy the file to the agent's workspace
             pwd = os.path.dirname(os.getcwd())
-            agent_workspace = os.path.join(pwd, "aiversity_workspaces", "Iris-5000")
+            agent_workspace = os.path.join(pwd, "aiversity_workspaces", "iris-5000")
             os.makedirs(agent_workspace, exist_ok=True)
             destination = os.path.join(agent_workspace, os.path.basename(file))
             shutil.copy2(file, destination)
@@ -521,12 +521,12 @@ async def main():
     asyncio.set_event_loop(loop)
 
     workspace = SharedWorkspace()
-    action_window = ActionListWindow()
+    # action_window = ActionListWindow()
 
-    workspace.actionReceived.connect(action_window.update_action_list)
+    # workspace.actionReceived.connect(action_window.update_action_list)
 
     workspace.show()
-    action_window.show()
+    # action_window.show()
 
     if sys.platform == "darwin":
         workspace.setAcceptDrops(True)
