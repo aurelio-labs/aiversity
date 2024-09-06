@@ -6,6 +6,8 @@ AIversity is an innovative adaptive learning system that leverages a multi-agent
 
 This project is being developed as part of an MSc program, showcasing the integration of advanced AI concepts into a practical, educational application.
 
+<img width="447" alt="image" src="https://github.com/user-attachments/assets/a431950e-b1f9-49a3-965c-40b681e9e100">
+
 ## ARCANE Framework
 
 ARCANE serves as the foundational architecture for AIversity, providing a robust platform for creating intelligent, networked entities. Key features of ARCANE include:
