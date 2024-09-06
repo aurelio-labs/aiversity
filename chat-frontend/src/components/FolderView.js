@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './FolderView.css';
 
-const FolderView = () => {
+const FolderView = ({ isOpen, onClose }) => {
   const IRIS_ROOT = '/Users/rob/Github/MSC/aiversity/aiversity_workspaces/Iris-5000/';
-  const [isOpen, setIsOpen] = useState(false);
   const [currentPath, setCurrentPath] = useState('');
   const [folderContent, setFolderContent] = useState([]);
   const [newItems, setNewItems] = useState([]);
@@ -162,25 +161,18 @@ const FolderView = () => {
   };
 
   return (
-    <>
-      <div className="folder-container">
-        <button className={`folder-icon ${isOpen ? 'spin' : ''}`} onClick={() => setIsOpen(!isOpen)}>
-          📁
-        </button>
-      </div>
-      <div className={`folder-view-overlay ${isOpen ? 'open' : ''}`}>
-        <div className="folder-view">
-          <div className="folder-header">
-            {renderBreadcrumbs()}
-            <button className="close-folder" onClick={() => setIsOpen(false)}>✕</button>
-          </div>
-          <div
-            ref={folderContentRef}
-            className="folder-content"
-          >
-            {currentPath !== '' && renderFileItem({ name: '..', type: 'folder' }, 'up')}
-            {folderContent.map((item, index) => renderFileItem(item, index))}
-          </div>
+    <div className={`folder-view-overlay ${isOpen ? 'open' : ''}`}>
+      <div className="folder-view">
+        <div className="folder-header">
+          <span className="current-path">{currentPath || '/'}</span>
+          <button className="close-folder" onClick={onClose}>✕</button>
+        </div>
+        <div
+          ref={folderContentRef}
+          className="folder-content"
+        >
+          {currentPath !== '' && renderFileItem({ name: '..', type: 'folder' }, 'up')}
+          {folderContent.map((item, index) => renderFileItem(item, index))}
         </div>
       </div>
       <div className={`file-editor-overlay ${editingFile ? 'open' : ''}`}>
@@ -196,7 +188,7 @@ const FolderView = () => {
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 };
 

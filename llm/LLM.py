@@ -118,6 +118,13 @@ class LLM:
             response = self.client.messages.create(**request)
             action = None
             for content_item in response.content:
+                if tool_config['name'] == 'create_action':
+                    if not isinstance(response.content, list):
+                        if isinstance(content_item, TextBlock):
+                            action = {"action" : "send_message_to_student", "params": {"message" : content_item.text}}
+                            break
+
+
                 # Check for ToolUseBlock
                 if isinstance(content_item, ToolUseBlock):
                     if content_item.name != 'create_action':
@@ -126,7 +133,7 @@ class LLM:
                             params = content_item.input['action']['params']
                             action = {"action": action, "params": params}
                         else:
-                            action = content_item.input
+                            action = {"action" : content_item.name, "params" : content_item.input}
                         break
                     elif content_item.name == 'create_action':
                         action = content_item.input['action']['action']
@@ -142,24 +149,12 @@ class LLM:
                             params = content_item.input['action']['params']
                             action = {"action": action, "params": params}
                         break
-
-                # Check for TextBlock with JSON
-                elif isinstance(content_item, TextBlock):
-                    try:
-                        action_json = json.loads(content_item.text)
-                        if (
-                            isinstance(action_json, dict)
-                            and "action" in action_json
-                            and "params" in action_json
-                        ):
-                            action = action_json
-                            break
-                    except json.JSONDecodeError:
-                        continue
+                        
 
             success = action is not None
             self.log_request_response(request, response.dict(), success)
-
+            # if tool_config['name'] == "create_action":
+            #     from remote_pdb import RemotePdb; RemotePdb('0.0.0.0', 5678).set_trace()
             
 
             if not action:

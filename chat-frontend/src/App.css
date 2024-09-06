@@ -196,3 +196,11 @@
 .control-btn:active {
   animation: pulse 0.3s;
 }
+
+.toggle-folder {
+  background: linear-gradient(135deg, #4a69bd, #0c2461);
+}
+
+.toggle-folder:hover {
+  background: linear-gradient(135deg, #6a89cc, #1e3799);
+}

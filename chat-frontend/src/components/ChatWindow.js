@@ -33,7 +33,7 @@ const ChatWindow = ({ messages, addMessage }) => {
     // Set a timeout to hide the typing indicator if no response is received
     const newTimeoutId = setTimeout(() => {
       setIsTyping(false);
-      addMessage("Sorry, I didn't receive a response. Please try again.", false);
+      // addMessage("Sorry, I didn't receive a response. Please try again.", false);
     }, 100000); // 10 seconds timeout
 
     setTimeoutId(newTimeoutId);

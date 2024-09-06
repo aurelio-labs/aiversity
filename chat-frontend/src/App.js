@@ -15,6 +15,7 @@ function App() {
   const [userId, setUserId] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
   const socketRef = useRef(null);
+  const [isFolderViewOpen, setIsFolderViewOpen] = useState(false);
 
   const setupWebSocket = useCallback((id) => {
     socketRef.current = new WebSocket(`ws://localhost:5000/ws-chat/${id}`);
@@ -101,6 +102,10 @@ function App() {
     setIsWorkspaceOpen(prev => !prev);
   }, []);
 
+  const toggleFolderView = () => {
+    setIsFolderViewOpen(!isFolderViewOpen);
+  };
+
   const formatTime = useCallback((date) => {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   }, []);
@@ -182,11 +187,14 @@ function App() {
               <button className="control-btn clear-chat" onClick={clearChat} title="Clear Chat">
                 <span className="clear-icon">×</span>
               </button>
-              <FolderView />
+              <button className="control-btn toggle-folder" onClick={toggleFolderView} title="Toggle Folder View">
+                📁
+              </button>
             </div>
           </div>
         </div>
       </div>
+      <FolderView isOpen={isFolderViewOpen} onClose={toggleFolderView} />
     </div>
   );
 }
