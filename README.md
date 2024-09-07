@@ -1,5 +1,7 @@
 # AIversity: An Adaptive Learning Ecosystem with Multi-Agent AI Tutoring
 
+![image](https://github.com/user-attachments/assets/6aeb51ca-9fc0-4d2a-a299-770a36ec875f)
+
 ## Project Overview
 
 AIversity is an innovative adaptive learning system that leverages a multi-agent AI architecture to provide personalized educational experiences. Built upon the ARCANE (Advanced Reasoning Cognitive Architecture for Networked Entities) framework, AIversity aims to revolutionize personalized education through cutting-edge AI techniques.
